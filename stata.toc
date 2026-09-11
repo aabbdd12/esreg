@@ -1,0 +1,4 @@
+v 3
+d Abdelkrim Araar, Universite Laval and PEP
+d Stata packages
+p esreg Endogenous switching regression with heterogeneous selection on gains

@@ -1,0 +1,47 @@
+v 3
+d esreg. Endogenous switching regression with heterogeneous selection on gains
+d
+d esreg fits the endogenous switching regression by full-information maximum
+d likelihood or by a two-step estimator with the exact stacked-moment variance,
+d reports ATT, ATU, ATE and the selection-on-gains parameter kappa (heterogeneous
+d in the covariates on request), and comes with post-estimation commands for the
+d diagnostics of the selection equation (esrdiag), the specification tests
+d (esrtest: index, sufficiency, constant kappa, normality by regime, pseudo-DiD),
+d the effect by quantile of the score (esrcurve), the marginal treatment effect
+d (esrmte), and a reading of the results (esrreport). Survey weights, hsize()
+d and the svy prefix (FIML) are supported.
+d
+d Reference: Araar, A. (2026). Endogenous switching regression with heterogeneous
+d selection on gains: assumptions, tests, and estimation.
+d
+d KW: endogenous switching regression
+d KW: selection on gains
+d KW: treatment effects
+d KW: marginal treatment effect
+d KW: specification tests
+d
+d Requires: Stata version 16
+d
+d Distribution-Date: 20260912
+d
+d Author: Abdelkrim Araar, Universite Laval and PEP
+d Support: see the GitHub page
+d
+f esreg.ado
+f esreg_lf1.ado
+f esreg_engine.ado
+f esreg_p.ado
+f esrdiag.ado
+f esrtest.ado
+f esrcurve.ado
+f esrmte.ado
+f _esreg_pwr.ado
+f esrreport.ado
+f esreg.sthlp
+f esreg_postestimation.sthlp
+f esrdiag.sthlp
+f esrtest.sthlp
+f esrcurve.sthlp
+f esrmte.sthlp
+f esrreport.sthlp
+f esreg_returns.txt

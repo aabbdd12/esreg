@@ -1,0 +1,19 @@
+cff-version: 1.2.0
+message: "If you use esreg, please cite the paper and the software."
+title: "esreg: Endogenous switching regression with heterogeneous selection on gains (Stata package)"
+version: 1.0.0
+date-released: 2026-09-12
+license: MIT
+authors:
+  - family-names: Araar
+    given-names: Abdelkrim
+    affiliation: "Universite Laval and Partnership for Economic Policy (PEP)"
+repository-code: "https://github.com/aabbdd12/esreg"
+preferred-citation:
+  type: article
+  title: "Endogenous Switching Regression with Heterogeneous Selection on Gains: Assumptions, Tests, and Estimation"
+  authors:
+    - family-names: Araar
+      given-names: Abdelkrim
+  year: 2026
+  notes: "Working paper, Universite Laval and PEP"
