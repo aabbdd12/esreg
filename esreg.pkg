@@ -12,7 +12,8 @@ d (esrmte), and a reading of the results (esrreport). Survey weights, hsize()
 d and the svy prefix (FIML) are supported.
 d
 d Reference: Araar, A. (2026). Endogenous switching regression with heterogeneous
-d selection on gains: assumptions, tests, and estimation.
+d selection on gains: assumptions, tests, and estimation. Zenodo,
+d doi:10.5281/zenodo.22717029.
 d
 d KW: endogenous switching regression
 d KW: selection on gains

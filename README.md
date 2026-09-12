@@ -22,8 +22,8 @@ and against Stata's `etregress, poutcomes`, `movestay` and `msat`. The
 methods are described in
 
 > Araar, A. (2026). *Endogenous Switching Regression with Heterogeneous
-> Selection on Gains: Assumptions, Tests, and Estimation.* Working paper,
-> Université Laval and PEP.
+> Selection on Gains: Assumptions, Tests, and Estimation.* Zenodo.
+> <https://doi.org/10.5281/zenodo.22717029>
 
 ## Installation
 
@@ -65,9 +65,11 @@ then `esrtest, kappa`. Survey design: `svyset psu [pw = wt], strata(s)` then
 (percentile-weights regression engine), `esrreport.ado`; help files `*.sthlp`;
 `esreg_returns.txt` (the layout of `e()`); `esreg.pkg`, `stata.toc`.
 
+## Replication
+
 The replication package of the paper (Python reference library, Monte Carlo
-scripts, simulated samples, do-files and logs of every table and figure) is a
-separate repository.
+scripts, simulated samples, do-files and logs of every table and figure) is at
+<https://github.com/aabbdd12/esregrepl>.
 
 ## License
 

@@ -16,4 +16,7 @@ preferred-citation:
     - family-names: Araar
       given-names: Abdelkrim
   year: 2026
-  notes: "Working paper, Universite Laval and PEP"
+  publisher:
+    name: Zenodo
+  doi: 10.5281/zenodo.22717029
+  url: "https://doi.org/10.5281/zenodo.22717029"

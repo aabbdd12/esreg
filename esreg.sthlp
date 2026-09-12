@@ -272,8 +272,8 @@ in the package):
 {title:References}
 
 {phang}Araar, A. (2026). Endogenous switching regression with heterogeneous
-selection on gains: assumptions, tests, and estimation. Working paper,
-Universite Laval and PEP.{p_end}
+selection on gains: assumptions, tests, and estimation. Zenodo,
+doi:10.5281/zenodo.22717029.{p_end}
 
 {phang}Araar, A. (2026). Estimating treatment effects under selection on gains:
 models, assumptions, and policy implications. Zenodo, doi:10.5281/zenodo.22672713.{p_end}
