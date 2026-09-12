@@ -1,11 +1,11 @@
-*! esreg 0.4.0  11sep2026  A. Araar (Universite Laval / PEP)
+*! esreg 0.4.1  12sep2026  A. Araar (Universite Laval / PEP)
 *! Endogenous switching regression: FIML (ml lf1, analytic score) or two-step
 *! (probit + OLS with Mills ratios, exact stacked-moment variance), with the
 *! treatment effects ATT / ATU / ATE and kappa = rho1*sigma1 - rho0*sigma0.
 *! Files: esreg.ado (this), esreg_lf1.ado (ml evaluator), esreg_engine.ado
 *! (shared Mata engine).  Mirrors the Python reference esreg v0.1.
 *!
-*! esreg depvar [indepvars] [if] [in] [pw fw iw], SELect(treatvar = varlist)
+*! [by varlist:] esreg depvar [indepvars] [if] [in] [pw fw iw], SELect(treatvar = varlist)
 *!        [ METHod(fiml|twostep) HETSigma(varlist) HETRho(varlist) KAPpa(varlist)
 *!          vce(oim|opg|robust|cluster clustvar) noEFFects Level(#) noLOg
 *!          ITERate(#) DIFficult STORe(name) ]
@@ -33,7 +33,7 @@ cap program drop _esreg_llindep
 cap program drop _esreg_fvx
 cap program drop _esreg_fvone
 
-program define esreg, eclass properties(svyb svyj svyr)
+program define esreg, eclass byable(recall) properties(svyb svyj svyr)
     version 16
     if replay() {
         if ("`e(cmd)'" != "esreg") error 301

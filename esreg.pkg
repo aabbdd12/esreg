@@ -29,6 +29,7 @@ d Author: Abdelkrim Araar, Universite Laval and PEP
 d Support: see the GitHub page
 d
 f esreg.ado
+f esreg.dlg
 f esreg_lf1.ado
 f esreg_engine.ado
 f esreg_mata.ado

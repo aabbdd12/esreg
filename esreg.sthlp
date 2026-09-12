@@ -27,7 +27,7 @@
 {title:Syntax}
 
 {p 8 16 2}
-{cmd:esreg} {depvar} [{indepvars}] {ifin} [{it:{help esreg##weight:weight}}]{cmd:,}
+[{cmd:by} {varlist}{cmd::}] {cmd:esreg} {depvar} [{indepvars}] {ifin} [{it:{help esreg##weight:weight}}]{cmd:,}
 {cmdab:sel:ect(}{it:treatvar} {cmd:=} {varlist}{cmd:)} [{it:options}]
 
 {p 8 16 2}
@@ -68,6 +68,8 @@
 {p 4 6 2}{it:indepvars} and the variables of {cmd:select()}, {cmd:hetsigma()}, {cmd:hetrho()} and {cmd:kappa()} may contain factor variables; see {help fvvarlist}.{p_end}
 {marker weight}{...}
 {p 4 6 2}{cmd:pweight}s, {cmd:fweight}s and {cmd:iweight}s are allowed; see {help weight}. {cmd:svy}, {cmd:bootstrap} and {cmd:jackknife} are allowed as prefixes; see {help prefix} and {help esreg##svy:Weights and survey design} below.{p_end}
+{p 4 6 2}{cmd:by} is allowed; see {help by}.{p_end}
+{p 4 6 2}A dialog box is available: type {cmd:db esreg}.{p_end}
 
 
 {marker description}{...}

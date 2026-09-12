@@ -20,7 +20,13 @@
 
 {pstd}
 {cmd:esrdiag} reports what the selection equation of an {helpb esreg} estimation
-can bear, in three blocks.
+can bear, in four blocks.
+
+{pstd}
+{it:Fit}: the log likelihood and the pseudo-R2 of the selection equation on its
+own, that is of the probit of the treatment on the whole of Z, together with the
+chi2 against the intercept-only model. This block is always reported, whether or
+not the selection equation holds a variable excluded from the outcome equations.
 
 {pstd}
 {it:Strength}: the LR test of the probit with and without the excluded
@@ -57,6 +63,7 @@ is the current {cmd:e()} if it is an {cmd:esreg} estimation, else {cmd:_esreg}.
 
 {pstd}{cmd:esrdiag} stores in {cmd:r()}: {cmd:r(lr_excl)}, {cmd:r(df_excl)},
 {cmd:r(p_excl)}, {cmd:r(r2_full)}, {cmd:r(r2_restr)}, {cmd:r(r2_incr)},
+{cmd:r(ll_sel)}, {cmd:r(ll0_sel)}, {cmd:r(df_sel)},
 {cmd:r(varP_share)}, {cmd:r(vif1)}, {cmd:r(vif0)}, {cmd:r(supp_lo)},
 {cmd:r(supp_hi)}, {cmd:r(p_min1)}, {cmd:r(p_max1)}, {cmd:r(p_min0)},
 {cmd:r(p_max0)}, {cmd:r(share_att)}, {cmd:r(share_atu)}, {cmd:r(att)},

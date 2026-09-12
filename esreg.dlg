@@ -1,0 +1,445 @@
+/*
+	esreg.dlg  0.1.0   12sep2026   A. Araar (Universite Laval / PEP)
+
+	Dialog for -esreg-: endogenous switching regression with heterogeneous
+	selection on gains (FIML or two-step), ATT / ATU / ATE and kappa.
+
+	Self-contained on purpose: apart from the three standard layout includes
+	(_std_large, header, _sp_level) every tab is written here, so the dialog
+	does not depend on the internal scripts of the official includes.
+
+	keyword:  eclass
+*/
+
+VERSION 16.0
+
+INCLUDE _std_large
+DEFINE _dlght 430
+INCLUDE header
+
+HELP hlp1, view("help esreg")
+RESET res1
+
+SCRIPT POSTINIT
+BEGIN
+	script esr_ml_on
+	program wgt_ck
+	program se_clu_ck
+	program max_ed_iter
+	program byifin_ck
+END
+
+
+/* -------------------------------------------------------------- Model -- */
+
+DIALOG main, title("esreg - Endogenous switching regression")		///
+	tabtitle("Model")
+BEGIN
+  TEXT     tx_dv	_lft	_top	_vnwd	.,			///
+	label("Dependent variable")
+  DEFINE holdy @y
+  VARNAME  vn_dv	@	_ss	@	.,			///
+	ts								///
+	numeric								///
+	label("Dependent variable")
+
+  TEXT     tx_iv	_vlx	holdy	_vlwd	.,			///
+	label("Independent variables (outcome equations)")
+  VARLIST  vl_iv	@	_ss	@	.,			///
+	fv ts								///
+	allowcat							///
+	numeric								///
+	label("Independent variables")
+
+  TEXT     tx_tv	_lft	_ls	_vnwd	.,			///
+	label("Treatment variable (0/1)")
+  DEFINE holdz @y
+  VARNAME  vn_tv	@	_ss	@	.,			///
+	ts								///
+	numeric								///
+	label("Treatment variable")
+
+  TEXT     tx_zv	_vlx	holdz	_vlwd	.,			///
+	label("Selection variables (at least one exclusion)")
+  VARLIST  vl_zv	@	_ss	@	.,			///
+	fv ts								///
+	allowcat							///
+	numeric								///
+	label("Selection variables")
+
+  GROUPBOX gb_est	_lft	_ls	_iwd	64,			///
+	label("Estimator")
+  RADIO    rb_ml	_ilft	_ss	_inwd	., first		///
+	onclickon(script esr_ml_on)					///
+	label("Full-information maximum likelihood (FIML)")
+  RADIO    rb_2s	@	_ss	@	., last			///
+	onclickon(script esr_2s_on)					///
+	label("Two-step: probit and inverse Mills ratios (stacked variance)")
+
+  GROUPBOX gb_het	_lft	_ls	_iwd	96,			///
+	label("Heterogeneity of the second moments (optional)")
+  TEXT     tx_hsig	_ilft	_ss	150	.,			///
+	label("Variance sigma (FIML):")
+  VARLIST  vl_hsig	_vlx	@	_vlwd	.,			///
+	fv ts								///
+	allowcat							///
+	numeric								///
+	option("hetsigma")						///
+	label("hetsigma")
+  TEXT     tx_hrho	_ilft	_ms	150	.,			///
+	label("Correlation rho (FIML):")
+  VARLIST  vl_hrho	_vlx	@	_vlwd	.,			///
+	fv ts								///
+	allowcat							///
+	numeric								///
+	option("hetrho")						///
+	label("hetrho")
+  TEXT     tx_kap	_ilft	_ms	150	.,			///
+	label("kappa(x) (two-step):")
+  VARLIST  vl_kap	_vlx	@	_vlwd	.,			///
+	fv ts								///
+	allowcat							///
+	numeric								///
+	option("kappa")							///
+	label("kappa")
+
+  TEXT     tx_hs	_lft	_ls	_vnwd	.,			///
+	label("Household size (multiplies the weight)")
+  DEFINE holdw @y
+  VARNAME  vn_hs	@	_ss	@	.,			///
+	ts								///
+	numeric								///
+	option("hsize")							///
+	label("hsize")
+
+  TEXT     tx_store	_vlx	holdw	_vlwd	.,			///
+	label("Store the estimates under the name")
+  EDIT     ed_store	@	_ss	_vnwd	.,			///
+	option("store")							///
+	label("store")
+
+  TEXT     tx_note1	_lft	_ls	_iwd	.,			///
+	label("select() must hold at least one variable excluded from the outcome")
+  TEXT     tx_note2	_lft	_ss	_iwd	.,			///
+	label("equations (exclusion restriction); esrdiag and esrtest check its")
+  TEXT     tx_note3	_lft	_ss	_iwd	.,			///
+	label("strength, the common support and the specification after estimation.")
+END
+
+SCRIPT esr_ml_on
+BEGIN
+	main.tx_hsig.enable
+	main.vl_hsig.enable
+	main.tx_hrho.enable
+	main.vl_hrho.enable
+	main.tx_kap.disable
+	main.vl_kap.disable
+	rpt.ck_herm.disable
+	se.gb_se.enable
+	se.rb_oim.enable
+	se.rb_opg.enable
+	se.rb_rob.enable
+	se.rb_clu.enable
+	max.gb_max.enable
+	max.ck_nolog.enable
+	max.ck_diff.enable
+	max.ck_iter.enable
+	program se_clu_ck
+	program max_ed_iter
+END
+
+SCRIPT esr_2s_on
+BEGIN
+	main.tx_hsig.disable
+	main.vl_hsig.disable
+	main.tx_hrho.disable
+	main.vl_hrho.disable
+	main.tx_kap.enable
+	main.vl_kap.enable
+	rpt.ck_herm.enable
+	se.gb_se.disable
+	se.rb_oim.disable
+	se.rb_opg.disable
+	se.rb_rob.disable
+	se.rb_clu.disable
+	se.tx_clu.disable
+	se.vn_clu.disable
+	max.gb_max.disable
+	max.ck_nolog.disable
+	max.ck_diff.disable
+	max.ck_iter.disable
+	max.tx_iter.disable
+	max.ed_iter.disable
+END
+
+
+/* ---------------------------------------------------------- by/if/in -- */
+
+DIALOG byifin, tabtitle("by/if/in")
+BEGIN
+  CHECKBOX ck_by	_lft	_top	_iwd	.,			///
+	onclickon(program byifin_ck)					///
+	onclickoff(program byifin_ck)					///
+	label("Repeat the command for each group defined by")
+  VARLIST  vl_by	_ilft	_ss	_inwd	.,			///
+	label("by variables")
+
+  TEXT     tx_if	_lft	_ls	_iwd	.,			///
+	label("Restrict the estimation to the observations satisfying (if)")
+  EDIT     ed_if	_lft	_ss	_iwd	.,			///
+	label("if expression")
+
+  TEXT     tx_in	_lft	_ls	250	.,			///
+	label("Range of observations (in), for example 1/100")
+  EDIT     ed_in	_vlx	@	120	.,			///
+	label("in range")
+END
+
+PROGRAM byifin_ck
+BEGIN
+	if byifin.ck_by {
+		call byifin.vl_by.enable
+	}
+	if !byifin.ck_by {
+		call byifin.vl_by.disable
+	}
+END
+
+
+/* ----------------------------------------------------------- Weights -- */
+
+DIALOG wgt, tabtitle("Weights")
+BEGIN
+  GROUPBOX gb_wgt	_lft	_top	_iwd	110,			///
+	label("Weight type")
+  RADIO    rb_wnone	_ilft	_ss	_inwd	., first		///
+	onclickon(program wgt_ck)					///
+	label("No weights")
+  RADIO    rb_wfw	@	_ss	@	.,			///
+	onclickon(program wgt_ck)					///
+	label("Frequency weights (fweight)")
+  RADIO    rb_wpw	@	_ss	@	.,			///
+	onclickon(program wgt_ck)					///
+	label("Sampling weights (pweight)")
+  RADIO    rb_wiw	@	_ss	@	., last			///
+	onclickon(program wgt_ck)					///
+	label("Importance weights (iweight)")
+
+  TEXT     tx_wexp	_lft	_ls	200	.,			///
+	label("Weight variable or expression")
+  EDIT     ed_wexp	_vlx	@	_vlwd	.,			///
+	label("Weight expression")
+
+  TEXT     tx_wnote	_lft	_ls	_iwd	.,			///
+	label("If no weight is given here and the data are svyset, esreg takes")
+  TEXT     tx_wnote2	_lft	_ss	_iwd	.,			///
+	label("the svyset weight as a pweight (see the Reporting tab to decline it).")
+END
+
+PROGRAM wgt_ck
+BEGIN
+	if wgt.rb_wnone {
+		call wgt.tx_wexp.disable
+		call wgt.ed_wexp.disable
+	}
+	if !wgt.rb_wnone {
+		call wgt.tx_wexp.enable
+		call wgt.ed_wexp.enable
+	}
+END
+
+
+/* --------------------------------------------------------- SE/Robust -- */
+
+DIALOG se, tabtitle("SE/Robust")
+BEGIN
+  GROUPBOX gb_se	_lft	_top	_iwd	140,			///
+	label("Standard errors of the FIML estimator")
+  RADIO    rb_oim	_ilft	_ss	_inwd	., first		///
+	onclickon(program se_clu_ck)					///
+	label("Observed information matrix (the default)")
+  RADIO    rb_opg	@	_ss	@	.,			///
+	onclickon(program se_clu_ck)					///
+	label("Outer product of the gradients (OPG)")
+  RADIO    rb_rob	@	_ss	@	.,			///
+	onclickon(program se_clu_ck)					///
+	label("Robust (Huber/White/sandwich)")
+  RADIO    rb_clu	@	_ss	@	., last			///
+	onclickon(program se_clu_ck)					///
+	label("Clustered by a grouping variable")
+  TEXT     tx_clu	_ilft	_ms	150	.,			///
+	label("Cluster variable:")
+  VARNAME  vn_clu	_vlx	@	_vnwd	.,			///
+	label("Cluster variable")
+
+  TEXT     tx_senote	_lft	_ls	_iwd	.,			///
+	label("The two-step estimator always reports the exact stacked-moment")
+  TEXT     tx_senote2	_lft	_ss	_iwd	.,			///
+	label("(robust) variance: these choices do not apply to it.")
+END
+
+PROGRAM se_clu_ck
+BEGIN
+	if main.rb_2s {
+		call se.tx_clu.disable
+		call se.vn_clu.disable
+	}
+	if !main.rb_2s {
+		if se.rb_clu {
+			call se.tx_clu.enable
+			call se.vn_clu.enable
+		}
+		if !se.rb_clu {
+			call se.tx_clu.disable
+			call se.vn_clu.disable
+		}
+	}
+END
+
+
+/* --------------------------------------------------------- Reporting -- */
+
+DIALOG rpt, tabtitle("Reporting")
+BEGIN
+  DEFINE _x _lft
+  DEFINE _y _top
+  DEFINE _cx _spr
+  INCLUDE _sp_level
+
+  CHECKBOX ck_noeff	_lft	_ls	_iwd	.,			///
+	option("noeffects")						///
+	label("Do not compute or report the treatment effects (ATT, ATU, ATE)")
+  CHECKBOX ck_nosvy	_lft	_ms	_iwd	.,			///
+	option("nosvyset")						///
+	label("Do not take the svyset weight as a pweight")
+  CHECKBOX ck_herm	_lft	_ms	_iwd	.,			///
+	option("hermite")						///
+	label("Hermite controls in the second step (two-step only)")
+END
+
+
+/* ------------------------------------------------------ Maximization -- */
+
+DIALOG max, tabtitle("Maximization")
+BEGIN
+  GROUPBOX gb_max	_lft	_top	_iwd	130,			///
+	label("Maximization of the likelihood (FIML)")
+  CHECKBOX ck_nolog	_ilft	_ss	_inwd	.,			///
+	option("nolog")							///
+	label("Suppress the iteration log")
+  CHECKBOX ck_diff	@	_ms	@	.,			///
+	option("difficult")						///
+	label("Use a different stepping algorithm (difficult)")
+  CHECKBOX ck_iter	@	_ms	@	.,			///
+	onclickon(program max_ed_iter)					///
+	onclickoff(program max_ed_iter)					///
+	label("Set the maximum number of iterations")
+  TEXT     tx_iter	_ilft	_ms	150	.,			///
+	label("Maximum iterations:")
+  EDIT     ed_iter	_vlx	@	80	.,			///
+	numonly								///
+	max(9)								///
+	option("iterate")						///
+	label("iterate")
+
+  TEXT     tx_mnote	_lft	_ls	_iwd	.,			///
+	label("The two-step estimator is not iterative: this tab does not apply to it.")
+END
+
+PROGRAM max_ed_iter
+BEGIN
+	if main.rb_2s {
+		call max.tx_iter.disable
+		call max.ed_iter.disable
+	}
+	if !main.rb_2s {
+		if max.ck_iter {
+			call max.tx_iter.enable
+			call max.ed_iter.enable
+		}
+		if !max.ck_iter {
+			call max.tx_iter.disable
+			call max.ed_iter.disable
+		}
+	}
+END
+
+
+/* ----------------------------------------------------------- command -- */
+
+PROGRAM select_opts
+BEGIN
+	require main.vn_tv
+	put main.vn_tv " "
+	put "= "
+	require main.vl_zv
+	put main.vl_zv
+END
+
+PROGRAM command
+BEGIN
+	if byifin.ck_by {
+		require byifin.vl_by
+		put "by " byifin.vl_by ", sort : "
+	}
+	put "esreg "
+	require main.vn_dv
+	varlist main.vn_dv [main.vl_iv]
+	if byifin.ed_if {
+		put " if " byifin.ed_if
+	}
+	if byifin.ed_in {
+		put " in " byifin.ed_in
+	}
+	if !wgt.rb_wnone {
+		require wgt.ed_wexp
+		put " ["
+		if wgt.rb_wfw {
+			put "fweight"
+		}
+		if wgt.rb_wpw {
+			put "pweight"
+		}
+		if wgt.rb_wiw {
+			put "iweight"
+		}
+		put " = " wgt.ed_wexp "]"
+	}
+	beginoptions
+		put "select("
+		put /program select_opts
+		put ")"
+		if main.rb_2s {
+			put " method(twostep)"
+		}
+		optionarg main.vl_hsig
+		optionarg main.vl_hrho
+		optionarg main.vl_kap
+		optionarg main.vn_hs
+		if !main.rb_2s {
+			if se.rb_opg {
+				put " vce(opg)"
+			}
+			if se.rb_rob {
+				put " vce(robust)"
+			}
+			if se.rb_clu {
+				require se.vn_clu
+				put " vce(cluster " se.vn_clu ")"
+			}
+			option max.ck_nolog
+			option max.ck_diff
+			if max.ck_iter {
+				require max.ed_iter
+				optionarg max.ed_iter
+			}
+		}
+		option rpt.ck_noeff
+		option rpt.ck_nosvy
+		if main.rb_2s {
+			option rpt.ck_herm
+		}
+		optionarg main.ed_store
+		optionarg /hidedefault rpt.sp_level
+	endoptions
+END

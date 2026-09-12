@@ -62,8 +62,9 @@ then `esrtest, kappa`. Survey design: `svyset psu [pw = wt], strata(s)` then
 `esreg_engine.ado` (loader), `esreg_mata.ado` (the Mata engine), `_esreg_getest.ado`,
 `_esreg_data.ado`, `_esreg_effects_post.ado` (internal helpers), `esreg_p.ado` (predict),
 `esrdiag.ado`, `esrtest.ado`, `esrcurve.ado`, `esrmte.ado`, `_esreg_pwr.ado`
-(percentile-weights regression engine), `esrreport.ado`; help files `*.sthlp`;
-`esreg_returns.txt` (the layout of `e()`); `esreg.pkg`, `stata.toc`.
+(percentile-weights regression engine), `esrreport.ado`; `esreg.dlg` (the dialog
+box, opened by `db esreg`); help files `*.sthlp`; `esreg_returns.txt` (the layout
+of `e()`); `esreg.pkg`, `stata.toc`.
 
 ## Replication
 

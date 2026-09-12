@@ -1,5 +1,7 @@
-*! esrdiag 0.1.1  11sep2026  A. Araar
+*! esrdiag 0.1.2  12sep2026  A. Araar
 *! Diagnostics of the selection equation after esreg (Section 4.4 of the paper):
+*!   fit        -- log likelihood and pseudo-R2 of the selection equation on its
+*!                 own (probit of D on the whole of Z), always reported;
 *!   strength   -- LR test and incremental pseudo-R2 of the excluded instruments
 *!                 in the probit, chi2(1) per instrument;
 *!   variation  -- share of the variance of P(Z) not explained by X, and the VIF
@@ -12,6 +14,7 @@
 *!
 *!   esrdiag [, EST(name)]
 *! Returns r(lr_excl) r(df_excl) r(p_excl) r(r2_full) r(r2_restr) r(r2_incr)
+*!         r(ll_sel) r(ll0_sel) r(df_sel)
 *!         r(varP_share) r(vif1) r(vif0) r(supp_lo) r(supp_hi) r(p_min1) r(p_max1)
 *!         r(p_min0) r(p_max0) r(share_att) r(share_atu) r(att) r(atu) r(att_cs)
 *!         r(atu_cs) r(instr) (chi2 per instrument) r(weak) r(form)
@@ -66,10 +69,14 @@ program define esrdiag, rclass
 
     * ---- strength of the excluded instruments -----------------------------------------
     tempname I
+    * the selection equation on its own: probit of D on the whole of Z.  Computed
+    * unconditionally, so that its fit is reported even without an exclusion.
+    qui probit `dv' `zv_m' `wexp' if `smp'
+    local llf  = e(ll)
+    local ll0f = e(ll_0)
+    local r2f  = e(r2_p)
+    local kzf  = e(df_m)
     if (`nexcl' > 0) {
-        qui probit `dv' `zv_m' `wexp' if `smp'
-        local llf = e(ll)
-        local r2f = e(r2_p)
         mat `I' = J(`nexcl', 3, .)
         local rn ""
         local i = 0
@@ -93,7 +100,6 @@ program define esrdiag, rclass
     else {
         local lr = .
         local plr = .
-        local r2f = .
         local r2r = .
     }
 
@@ -123,9 +129,18 @@ program define esrdiag, rclass
     di as txt "Diagnostics of the selection equation (" as res "`method'" as txt " estimation of " ///
        as res "`y'" as txt " on treatment " as res "`dv'" as txt ")"
     di as txt "{hline 76}"
+    di as txt "Fit of the selection equation (probit of " as res "`dv'" as txt " on the whole of Z)"
+    if (`ll0f' < .) {
+        local lr0 = 2 * (`llf' - `ll0f')
+        di as txt "  log likelihood " as res %11.4f `llf' as txt "   intercept only " as res %11.4f `ll0f'
+        di as txt "  pseudo-R2 " as res %6.4f `r2f' as txt "   LR chi2(" as res `kzf' as txt ") = " ///
+           as res %8.2f `lr0' as txt "   Prob > chi2 = " as res %6.4f chi2tail(`kzf', `lr0')
+    }
+    else di as txt "  log likelihood " as res %11.4f `llf' as txt "   pseudo-R2 " as res %6.4f `r2f'
+    di as txt "{hline 76}"
     di as txt "Strength of the excluded instruments" _col(40) as res "`excl'"
     if (`nexcl' > 0) {
-        di as txt "  LR test, probit with vs without them:   chi2(" as res `nexcl' as txt ") = " ///
+        di as txt "  LR test, with vs without them:  chi2(" as res `nexcl' as txt ") = " ///
            as res %8.2f `lr' as txt "   Prob > chi2 = " as res %6.4f `plr'
         di as txt "  pseudo-R2 of the probit:  with " as res %6.4f `r2f' as txt "   without " as res %6.4f `r2r' ///
            as txt "   increment " as res %6.4f `r2f' - `r2r'
@@ -177,6 +192,9 @@ program define esrdiag, rclass
     return scalar r2_full    = `r2f'
     return scalar r2_restr   = `r2r'
     return scalar r2_incr    = `r2f' - `r2r'
+    return scalar ll_sel     = `llf'
+    return scalar ll0_sel    = `ll0f'
+    return scalar df_sel     = `kzf'
     return scalar varP_share = `varP'
     return scalar vif1       = `vif1'
     return scalar vif0       = `vif0'
