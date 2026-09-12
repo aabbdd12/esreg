@@ -1,4 +1,4 @@
-*! esreg_p 0.4.0  11sep2026  A. Araar
+*! esreg_p 0.4.1  11sep2026  A. Araar
 *! predict after esreg.  One statistic per call (default: effect).
 *!   xb1 xb0        linear predictions X b_1, X b_0
 *!   xbsel          selection index Z g            pr         P(D = 1 | Z)
@@ -12,7 +12,12 @@
 *! Correspondence with mspredict after movestay: xb1/xb2 = xb1/xb0, psel = pr,
 *! mills1/mills2 = lambda1/lambda0, yc1_1 = yc11, yc2_1 = yc01 (treated only),
 *! yc1_2 = yc10, yc2_2 = yc00 (untreated only); predict computes all four for everyone.
+* all program drops first: an autoloaded ado-file defines its programs only while
+* it reads program definitions, so nothing else may stand between them
 cap program drop esreg_p
+cap program drop _esreg_p_lin
+cap program drop _esreg_p_rs
+cap program drop _esreg_p_scores
 program define esreg_p
     version 16
     if ("`e(cmd)'" != "esreg") {
@@ -104,7 +109,6 @@ program define esreg_p
 end
 
 * linear index of one equation of e(b), skipping the lambda columns of the two-step
-cap program drop _esreg_p_lin
 program define _esreg_p_lin
     version 16
     syntax newvarname [if], eq(string)
@@ -129,7 +133,6 @@ end
 
 * rho_j sigma_j (x) of the two-step route: coefficients of the lambda columns of
 * equation eq, applied to e(kappavars) and the constant
-cap program drop _esreg_p_rs
 program define _esreg_p_rs
     version 16
     syntax newvarname [if], eq(string)
@@ -163,7 +166,6 @@ end
 * equation-level scores of the FIML, d lnL_i / d(x_i b_eq), in the order of e(b):
 * y_1, y_0, <d>, lnsigma_1, lnsigma_0, atanhrho_1, atanhrho_0 (unweighted; the svy
 * prefix applies the design)
-cap program drop _esreg_p_scores
 program define _esreg_p_scores
     version 16
     syntax newvarlist(min=7 max=7) [if] [, vtyp(string)]

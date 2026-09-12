@@ -1,4 +1,4 @@
-*! esrreport 0.1.1  12sep2026  A. Araar
+*! esrreport 0.1.2  12sep2026  A. Araar
 *! Reading of an esreg estimation for the practitioner (skeleton).  Runs the
 *! diagnostics and tests of the family on the stored estimation, then prints an
 *! ordered reading with rule-based notes: (1) the selection equation (strength,
@@ -27,7 +27,10 @@
 *! the figures used: r(kappa) r(se_kappa) r(kappa_dd) r(p_link) r(p_gamma) r(p_suff)
 *! r(p_hausman) r(p_hermite) r(lr_excl) r(vif) r(share_extrap) r(att) r(atu) r(ate)
 *! r(att_cs) r(atu_cs) r(eff_first) r(eff_last).
+* all program drops first: an autoloaded ado-file defines its programs only while
+* it reads program definitions, so nothing else may stand between them
 cap program drop esrreport
+cap program drop _esrr_note
 program define esrreport, rclass
     version 16
     syntax [, EST(name) NQ(integer 5) LRmin(real 10) VIFmax(real 10) EXTRAPmax(real 0.10) ///
@@ -297,7 +300,6 @@ end
 
 * ---------------------------------------------------------------------------
 * print one numbered note, wrapped, and keep it in the caller's locals
-cap program drop _esrr_note
 program define _esrr_note
     gettoken n 0 : 0
     local txt = `0'

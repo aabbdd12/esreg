@@ -59,7 +59,8 @@ then `esrtest, kappa`. Survey design: `svyset psu [pw = wt], strata(s)` then
 ## Files
 
 `esreg.ado` (estimation), `esreg_lf1.ado` (likelihood evaluator),
-`esreg_engine.ado` (shared Mata engine and helpers), `esreg_p.ado` (predict),
+`esreg_engine.ado` (loader), `esreg_mata.ado` (the Mata engine), `_esreg_getest.ado`,
+`_esreg_data.ado`, `_esreg_effects_post.ado` (internal helpers), `esreg_p.ado` (predict),
 `esrdiag.ado`, `esrtest.ado`, `esrcurve.ado`, `esrmte.ado`, `_esreg_pwr.ado`
 (percentile-weights regression engine), `esrreport.ado`; help files `*.sthlp`;
 `esreg_returns.txt` (the layout of `e()`); `esreg.pkg`, `stata.toc`.

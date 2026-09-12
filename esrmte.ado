@@ -1,4 +1,4 @@
-*! esrmte 0.3.5  11sep2026  A. Araar
+*! esrmte 0.3.6  11sep2026  A. Araar
 *! Marginal treatment effect after esreg.
 *!   Parametric line  MTE(u) = m + kappa * invnormal(1 - u), m = E[X(b1 - b0)],
 *!   at chosen percentiles u of the participation unobservable (0 = most eager),
@@ -90,7 +90,17 @@ program define esrmte, rclass
     if ("`semipar'" != "") {
         * is the engine available (as a file on the adopath or already in memory)?
         cap _esreg_pwr
-        if (_rc == 199) {
+        local rcp = _rc
+        if (`rcp' != 199) {
+            * the ado is there; make sure its Mata functions are compiled (an autoloaded
+            * ado does not execute its mata: block): compile the file explicitly if not
+            mata: st_local("epwr_ok", strofreal(findexternal("_epwr_main()") != NULL))
+            if ("`epwr_ok'" != "1") {
+                cap findfile _esreg_pwr.ado
+                if (_rc == 0) cap noisily version `c(stata_version)': run "`r(fn)'"
+            }
+        }
+        if (`rcp' == 199) {
             di as txt _n "semipar: _esreg_pwr.ado not found (it ships with esreg) -- semiparametric MTE skipped"
         }
         else {

@@ -30,6 +30,10 @@ d
 f esreg.ado
 f esreg_lf1.ado
 f esreg_engine.ado
+f esreg_mata.ado
+f _esreg_getest.ado
+f _esreg_data.ado
+f _esreg_effects_post.ado
 f esreg_p.ado
 f esrdiag.ado
 f esrtest.ado

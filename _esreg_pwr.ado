@@ -694,17 +694,17 @@ real matrix _se_IF(real matrix  X,
     /* z_ord: ordering vector based on ranking variable z.
        If rows(z_ord)=0, fall back to ordering by y (default). */
     real scalar    n, k
-    real colvector e, dw, ord
+    real colvector ev, dw, ord
     real matrix    A, Ainv, S_dir, dS, revCS, psi, V
 
     n          = rows(y)
     k          = cols(X)
-    e          = y - X * beta
+    ev          = y - X * beta
     A          = (X :* w)' * X / n
     Ainv       = invsym(A)   /* more stable than luinv for near-singular A */
     dw         = (-0.5 / h^2) :* (pc :- tau) :* w
-    S_dir      = X :* (w :* e)
-    dS         = X :* (dw :* e)
+    S_dir      = X :* (w :* ev)
+    dS         = X :* (dw :* ev)
     /* Sort on z if provided, else sort on y */
     ord        = (rows(z_ord) == n) ? z_ord : order(y, 1)
     revCS      = J(n, k, 0)
@@ -730,14 +730,14 @@ real matrix _se_naive(real matrix  X,
                       real colvector beta)
 {
     real scalar    n, k, s2
-    real colvector e
+    real colvector ev
     real matrix    Ainv
 
     n    = rows(y)
     k    = cols(X)
-    e    = y - X * beta
+    ev    = y - X * beta
     Ainv = invsym((X :* w)' * X / n)   /* stable for sparse categories */
-    s2   = sum(w :* e:^2) / (n - k)
+    s2   = sum(w :* ev:^2) / (n - k)
     return(s2 * Ainv / n)
 }
 
@@ -876,7 +876,7 @@ real matrix _se_svy(real matrix  X,
     real scalar    k, n_h
     real matrix    psi, A, Ainv, meat, dev, Z_h, S_dir, dS, revCS
     real colvector psu_vec, strata_vec, strata_ids, psu_in_h
-    real colvector z_bar, mask_h, mask_p, e, dw, ord
+    real colvector z_bar, mask_h, mask_p, ev, dw, ord
     real scalar    h_val, p_val, i_h, i_p
 
     k    = cols(X)
@@ -884,10 +884,10 @@ real matrix _se_svy(real matrix  X,
     Ainv = invsym(A)   /* stable for near-singular A (sparse PSU or category) */
 
     /* ── Raw IF scores psi (n x k) ───────────────────────────────────── */
-    e     = y - X * beta
+    ev     = y - X * beta
     dw    = (-0.5 / h^2) :* (pc :- tau) :* w
-    S_dir = X :* (w :* e)
-    dS    = X :* (dw :* e)
+    S_dir = X :* (w :* ev)
+    dS    = X :* (dw :* ev)
     ord   = (rows(z_ord) == n) ? z_ord : order(y, 1)
     revCS = J(n, k, 0)
     revCS[ord,] = _revCumSum(dS[ord,])
