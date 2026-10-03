@@ -342,6 +342,11 @@ the tests and the reading{p_end}
 {p 8 8 2}{txt}({stata "esreg_examples 2, db":click to run in dialog box}){p_end}
 {p 8 8 2}{txt}({stata "esreg_examples 2, do":open as a do-file}){p_end}
 
+{pstd}On {cmd:union3} the two routes differ widely (ATT 0.39 by maximum likelihood,
+1.10 by the two-step, log wage): {cmd:esrtest, normal} and {cmd:esrreport} say which
+one the tests support, the two-step, and both rest on {cmd:south}, the only excluded
+instrument, whose exclusion no test can check here (Section 7 of the technical note, References).{p_end}
+
 {pstd}{bf:Example 3.} The effect along the score and the marginal treatment
 effect{p_end}
 {phang2}{cmd:. webuse union3}{p_end}
