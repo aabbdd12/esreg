@@ -1,0 +1,79 @@
+v 3
+d 'ESREG': module to estimate the endogenous switching regression with heterogeneous selection on gains
+d
+d  esreg estimates the endogenous switching regression (the Roy model with
+d  two regimes): a probit selection equation and an outcome equation for each
+d  regime, by full-information maximum likelihood or by a two-step estimator
+d  whose variance is that of the whole procedure (stacked moments). It
+d  reports the treatment effects ATT, ATU and ATE and the selection on gains,
+d  kappa = rho1 sigma1 - rho0 sigma0, constant or heterogeneous in the
+d  covariates (kappa(x)), with standard errors from the influence functions
+d  of the whole procedure (the estimation of the parameters, the averaging
+d  over the units and their covariance), by observation, by cluster or
+d  through the survey design (svyset: the svy prefix for the likelihood,
+d  vce(svy) for the two-step). An augmented two-step adds Hermite terms, in
+d  both regimes or in one, when the conditional mean of the regime errors is
+d  not linear. A family of post-estimation commands checks the assumptions
+d  one by one: esrdiag (strength, variation and support of the selection
+d  equation), esrtest (specification of the index, sufficiency of the
+d  instruments, constant kappa, normality by regime, and a pseudo-difference-
+d  in-differences on the index), esrcurve (the effect by quantile group of
+d  the score), esrmte (the marginal treatment effect, parametric and
+d  semiparametric) and esrreport (a reading of the results and the route to
+d  report). A dialog box and help examples run from clickable links are
+d  included. The commands are validated against etregress, movestay, msat and
+d  a Python reference implementation, and their standard errors against
+d  brute-force influence functions. A technical note documents the model, the
+d  tests and the estimators; it is included as an ancillary file
+d  (esreg_technical_note.pdf) and on Zenodo:
+d  https://doi.org/10.5281/zenodo.22717028
+d
+d KW: endogenous switching regression
+d KW: Roy model
+d KW: treatment effects
+d KW: selection on gains
+d KW: marginal treatment effect
+d KW: control function
+d KW: survey design
+d
+d Requires: Stata version 16
+d
+d Distribution-Date: 20261003
+d
+d Author: Abdelkrim Araar, Universite Laval and Partnership for Economic Policy (PEP)
+d Support: email aabd@ecn.ulaval.ca
+d
+d (A copy of the package as submitted to the SSC archive, version 1.0.0, to
+d test it before SSC publishes it: the example data and the other ancillary
+d files are copied to the current folder by net get.)
+d
+f _esreg_data.ado
+f _esreg_effects_post.ado
+f _esreg_esample.ado
+f _esreg_getest.ado
+f _esreg_ifcov.ado
+f _esreg_pwr.ado
+f esrcurve.ado
+f esrcurve.sthlp
+f esrdiag.ado
+f esrdiag.sthlp
+f esreg.ado
+f esreg.dlg
+f esreg.sthlp
+f esreg_engine.ado
+f esreg_examples.ado
+f esreg_lf1.ado
+f esreg_mata.ado
+f esreg_p.ado
+f esreg_postestimation.sthlp
+f esrmte.ado
+f esrmte.sthlp
+f esrreport.ado
+f esrreport.sthlp
+f esrtest.ado
+f esrtest.sthlp
+f esr_kx.dta
+f esr_nonlin.dta
+f esr_wt.dta
+f esreg_returns.txt
+f esreg_technical_note.pdf
