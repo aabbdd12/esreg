@@ -397,7 +397,7 @@ sampling weights){p_end}
 
 {phang}Araar, A. (2026). Endogenous switching regression with heterogeneous
 selection on gains: assumptions, tests, and estimation. Zenodo,
-doi:10.5281/zenodo.22717028 (all versions; version 1.0.0: doi:10.5281/zenodo.23121632).{p_end}
+doi:10.5281/zenodo.22717028 (all versions).{p_end}
 
 {phang}Araar, A. (2026). Estimating treatment effects under selection on gains:
 models, assumptions, and policy implications. Zenodo, doi:10.5281/zenodo.22672713.{p_end}
