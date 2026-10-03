@@ -1,9 +1,9 @@
 # Replication — Endogenous Switching Regression with Heterogeneous Selection on Gains
 
 Araar, A. (2026). *Endogenous Switching Regression with Heterogeneous Selection
-on Gains: Assumptions, Tests, and Estimation.* Zenodo.
-<https://doi.org/10.5281/zenodo.22717029> — version of October 2026, with
-`esreg` 1.0.0.
+on Gains: Assumptions, Tests, and Estimation* (Version 1.0.0). Zenodo.
+<https://doi.org/10.5281/zenodo.23121632> — with `esreg` 1.0.0 (all versions:
+<https://doi.org/10.5281/zenodo.22717028>).
 
 Every table and figure of the paper is reproduced here, in Python and in Stata,
 from the same data. The paths quoted in the paper are relative to this folder.

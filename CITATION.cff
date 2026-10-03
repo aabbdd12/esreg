@@ -16,7 +16,12 @@ preferred-citation:
     - family-names: Araar
       given-names: Abdelkrim
   year: 2026
+  version: 1.0.0
   publisher:
     name: Zenodo
-  doi: 10.5281/zenodo.22717029
-  url: "https://doi.org/10.5281/zenodo.22717029"
+  doi: 10.5281/zenodo.23121632
+  url: "https://doi.org/10.5281/zenodo.23121632"
+  identifiers:
+    - type: doi
+      value: 10.5281/zenodo.22717028
+      description: "All versions of the paper (resolves to the latest)"

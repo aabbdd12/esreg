@@ -27,8 +27,11 @@ validated against a Python reference implementation and against Stata's
 against a brute force. The methods are described in
 
 > Araar, A. (2026). *Endogenous Switching Regression with Heterogeneous
-> Selection on Gains: Assumptions, Tests, and Estimation.* Zenodo.
-> <https://doi.org/10.5281/zenodo.22717029>
+> Selection on Gains: Assumptions, Tests, and Estimation* (Version 1.0.0).
+> Zenodo. <https://doi.org/10.5281/zenodo.23121632>
+
+All versions of the paper: <https://doi.org/10.5281/zenodo.22717028> (always
+the latest).
 
 ## Installation
 
