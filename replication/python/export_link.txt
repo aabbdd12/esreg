@@ -1,0 +1,27 @@
+---- esr_link
+link test order 2, probit on (x z): chi2(1) = 307.9291  p = 6.17e-69  coefs [0.84348] se [0.04807]
+link test order 3, probit on (x z): chi2(2) = 307.7933  p = 1.46e-67  coefs [0.84487 0.00182] se [0.06508 0.05749]
+RESET-type, add z2: chi2(1) = 466.1845  p = 2.17e-103  coefs [0.49394] se [0.02288]  | LR = 593.6990 p = 3.93e-131
+link test order 2, probit on (x z z2): chi2(1) = 0.9521  p = 3.29e-01  coefs [-0.03028] se [0.03103]
+gamma contrast, select(x z): chi2(3) = 31.2016 p = 0.000
+   probit  [0.24969 0.6053  0.05555]
+   fiml    [0.24864 0.59472 0.05145]
+   se diff [0.0021  0.00273 0.00104]
+   full Hausman chi2(9) = 51.56; kappa 2S 0.9322 FIML 0.9779
+gamma contrast, select(x z z2): chi2(4) = 2.6367 p = 0.620
+   probit  [ 0.28854  0.90247  0.49394 -0.29689]
+   fiml    [ 0.2891   0.90496  0.50293 -0.30105]
+   se diff [0.00384 0.00669 0.00718 0.00583]
+   full Hausman chi2(10) = 7.56; kappa 2S 1.1301 FIML 1.1567
+   esreg fiml    select(x z   ): ATT 1.2340  kappa 0.9779 (0.1042)
+   esreg twostep select(x z   ): ATT 1.2003  kappa 0.9322 (0.0997)
+   esreg fiml    select(x z z2): ATT 1.2764  kappa 1.1567 (0.0851)
+   esreg twostep select(x z z2): ATT 1.2582  kappa 1.1301 (0.0874)
+---- esr_sim
+link test order 2, probit on (x z): chi2(1) = 0.0495  p = 8.24e-01  coefs [-0.00297] se [0.01334]
+link test order 3, probit on (x z): chi2(2) = 0.0503  p = 9.75e-01  coefs [-0.00287 -0.00028] se [0.01385 0.0106 ]
+gamma contrast, select(x z): chi2(3) = 6.6589 p = 0.084
+   probit  [0.29231 0.91328 0.2033 ]
+   fiml    [0.29264 0.90815 0.20425]
+   se diff [0.00183 0.00219 0.00096]
+   full Hausman chi2(9) = 11.00; kappa 2S 1.0436 FIML 1.0892

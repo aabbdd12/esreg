@@ -2,7 +2,7 @@ cff-version: 1.2.0
 message: "If you use esreg, please cite the paper and the software."
 title: "esreg: Endogenous switching regression with heterogeneous selection on gains (Stata package)"
 version: 1.0.0
-date-released: 2026-09-12
+date-released: 2026-10-03
 license: MIT
 authors:
   - family-names: Araar

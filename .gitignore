@@ -1,0 +1,13 @@
+# logs of local runs (the replication logs are kept)
+*.log
+!replication/logs/*.log
+*.smcl
+# Stata graph files written by the Section 7 script (the PDFs are kept)
+*.gph
+# LaTeX build files
+*.aux
+*.out
+*.toc
+*.synctex.gz
+# Python
+__pycache__/

@@ -8,8 +8,12 @@ d in the covariates on request), and comes with post-estimation commands for the
 d diagnostics of the selection equation (esrdiag), the specification tests
 d (esrtest: index, sufficiency, constant kappa, normality by regime, pseudo-DiD),
 d the effect by quantile of the score (esrcurve), the marginal treatment effect
-d (esrmte), and a reading of the results (esrreport). Survey weights, hsize()
-d and the svy prefix (FIML) are supported.
+d (esrmte), and a reading of the results (esrreport). Survey weights, hsize(),
+d clusters and survey designs are supported: the svy prefix (FIML), vce(cluster)
+d and vce(svy) (two-step). When the conditional mean is not linear, the
+d augmented two-step adds Hermite terms, in both regimes or in one (hermite()).
+d The examples of help esreg run from their links; ssc install esreg, all (or
+d net get esreg) copies their data into the current folder.
 d
 d Reference: Araar, A. (2026). Endogenous switching regression with heterogeneous
 d selection on gains: assumptions, tests, and estimation. Zenodo,
@@ -23,31 +27,38 @@ d KW: specification tests
 d
 d Requires: Stata version 16
 d
-d Distribution-Date: 20260912
+d Version: 1.0.0
+d Distribution-Date: 20261003
 d
 d Author: Abdelkrim Araar, Universite Laval and PEP
 d Support: see the GitHub page
 d
-f esreg.ado
-f esreg.dlg
-f esreg_lf1.ado
-f esreg_engine.ado
-f esreg_mata.ado
-f _esreg_getest.ado
-f _esreg_data.ado
-f _esreg_effects_post.ado
-f esreg_p.ado
-f esrdiag.ado
-f esrtest.ado
-f esrcurve.ado
-f esrmte.ado
-f _esreg_pwr.ado
-f esrreport.ado
-f esreg.sthlp
-f esreg_postestimation.sthlp
-f esrdiag.sthlp
-f esrtest.sthlp
-f esrcurve.sthlp
-f esrmte.sthlp
-f esrreport.sthlp
-f esreg_returns.txt
+f src/esreg.ado
+f src/esreg.dlg
+f src/esreg_lf1.ado
+f src/esreg_engine.ado
+f src/esreg_mata.ado
+f src/_esreg_getest.ado
+f src/_esreg_data.ado
+f src/_esreg_effects_post.ado
+f src/_esreg_esample.ado
+f src/_esreg_ifcov.ado
+f src/esreg_p.ado
+f src/esrdiag.ado
+f src/esrtest.ado
+f src/esrcurve.ado
+f src/esrmte.ado
+f src/_esreg_pwr.ado
+f src/esrreport.ado
+f src/esreg_examples.ado
+f src/esreg.sthlp
+f src/esreg_postestimation.sthlp
+f src/esrdiag.sthlp
+f src/esrtest.sthlp
+f src/esrcurve.sthlp
+f src/esrmte.sthlp
+f src/esrreport.sthlp
+f src/esreg_returns.txt
+f examples/esr_kx.dta
+f examples/esr_nonlin.dta
+f examples/esr_wt.dta

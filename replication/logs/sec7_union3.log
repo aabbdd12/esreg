@@ -1,0 +1,924 @@
+------------------------------------------------------------------------------------------------------------------------
+      name:  rep
+       log:  logs/sec7_union3.log
+  log type:  text
+ opened on:   3 Oct 2026, 08:37:24
+
+. do "stata/sec7_union3.do"
+
+. * sec7_union3.do -- Section 7 of the paper: the manual's example (union3) read with the
+. * toolkit.  Produces the figures paper/fig_union3_curve.pdf and paper/fig_union3_mte.pdf
+. * and the reading sheet paper/reading_union3.txt; every number of the section is here.
+. foreach f in esreg esreg_lf1 esreg_engine esreg_mata _esreg_getest _esreg_data _esreg_effects_post _esreg_esample _esr
+> eg_ifcov esreg_p esrdiag esrtest esrcurve esrmte _esreg_pwr esrreport {
+  2.     cap confirm file "`f'.ado"
+  3.     if (_rc == 0) run "`f'.ado"
+  4.     else {
+  5.         cap confirm file "src/`f'.ado"
+  6.         if (_rc == 0) run "src/`f'.ado"
+  7.         else          run "../src/`f'.ado"
+  8.     }
+  9. }
+
+. * fonts of the paper (Computer Modern is not installed on Windows; Times is the closest)
+. cap graph set window fontface "Times New Roman"
+
+. cap graph set window fontfacesans "Times New Roman"
+
+. cap graph set window fontfaceserif "Times New Roman"
+
+. use "data/union3.dta", clear
+(NLS Women 14-24 in 1968)
+
+. summarize wage ln_wage union south black tenure age grade smsa if !missing(wage, union, tenure)
+
+    Variable |        Obs        Mean    Std. dev.       Min        Max
+-------------+---------------------------------------------------------
+        wage |      1,210    5.665964    2.293624   1.070664   21.41328
+     ln_wage |      1,210    1.660834    .3874039   .0682788   3.064011
+       union |      1,210    .2090909    .4068276          0          1
+       south |      1,210    .3892562    .4877832          0          1
+       black |      1,210    .2570248    .4371739          0          1
+-------------+---------------------------------------------------------
+      tenure |      1,210    1.973003    1.682826          0       15.5
+         age |      1,210    23.32231    2.926491         18         30
+       grade |      1,210    12.24628    1.879014          0         18
+        smsa |      1,210    .7504132    .4329528          0          1
+
+. * ---- 0. the manual's reading: etregress, constrained model, wage in levels ----------------
+. etregress wage age grade smsa black tenure, treat(union = south black tenure) nolog
+
+Linear regression with endogenous treatment             Number of obs =  1,210
+Estimator: Maximum likelihood                           Wald chi2(6)  = 681.89
+Log likelihood = -3051.575                              Prob > chi2   = 0.0000
+
+------------------------------------------------------------------------------
+             | Coefficient  Std. err.      z    P>|z|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+wage         |
+         age |   .1487409   .0193291     7.70   0.000     .1108566    .1866252
+       grade |   .4205658   .0293577    14.33   0.000     .3630258    .4781058
+        smsa |   .9117044   .1249041     7.30   0.000     .6668969    1.156512
+       black |  -.7882471   .1367078    -5.77   0.000     -1.05619   -.5203048
+      tenure |   .1524015   .0369596     4.12   0.000     .0799621    .2248409
+     1.union |   2.945815   .2749621    10.71   0.000       2.4069    3.484731
+       _cons |  -4.351572   .5283952    -8.24   0.000    -5.387208   -3.315936
+-------------+----------------------------------------------------------------
+union        |
+       south |  -.5807419   .0851111    -6.82   0.000    -.7475566   -.4139271
+       black |   .4557499   .0958042     4.76   0.000     .2679771    .6435226
+      tenure |   .0871536   .0232483     3.75   0.000     .0415878    .1327195
+       _cons |  -.8855758   .0724506   -12.22   0.000    -1.027576   -.7435753
+-------------+----------------------------------------------------------------
+     /athrho |  -.6544347   .0910314    -7.19   0.000     -.832853   -.4760164
+    /lnsigma |   .7026769   .0293372    23.95   0.000      .645177    .7601767
+-------------+----------------------------------------------------------------
+         rho |  -.5746478    .060971                      -.682005   -.4430476
+       sigma |   2.019151   .0592362                      1.906325    2.138654
+      lambda |    -1.1603   .1495097                     -1.453334   -.8672668
+------------------------------------------------------------------------------
+LR test of indep. eqns. (rho = 0):   chi2(1) =    19.84   Prob > chi2 = 0.0000
+
+. * ---- 1. the selection equation (probit gamma = two-step route) --------------------------
+. esreg ln_wage age grade smsa black tenure, select(union = south black tenure) method(twostep) nolog
+
+Endogenous switching regression -- two-step     Number of obs =      1210
+Outcome: ln_wage   Treatment: union             Treated       =       253
+Std. err.: exact variance of the two-step procedure (stacked moments)
+------------------------------------------------------------------------------
+     ln_wage | Coefficient  Std. err.      z    P>|z|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+union        |
+       south |  -.4895032   .0941021    -5.20   0.000    -.6739399   -.3050666
+       black |   .4397974   .0976009     4.51   0.000     .2485031    .6310917
+      tenure |   .0997638   .0243689     4.09   0.000     .0520018    .1475259
+       _cons |  -.9679795    .074754   -12.95   0.000    -1.114495   -.8214643
+-------------+----------------------------------------------------------------
+ln_wage_1    |
+         age |   .0218579   .0065597     3.33   0.001     .0090012    .0347146
+       grade |   .0534746   .0077535     6.90   0.000     .0382781    .0686712
+        smsa |   .1343401   .0418303     3.21   0.001     .0523543     .216326
+       black |  -.2061484   .0533007    -3.87   0.000    -.3106158    -.101681
+      tenure |   .0086532   .0178625     0.48   0.628    -.0263568    .0436631
+      lambda |  -.3330608   .1102159    -3.02   0.003      -.54908   -.1170415
+       _cons |   1.032811   .2592975     3.98   0.000     .5245972    1.541025
+-------------+----------------------------------------------------------------
+ln_wage_0    |
+         age |   .0257023   .0038474     6.68   0.000     .0181615    .0332431
+       grade |   .0754771   .0065653    11.50   0.000     .0626094    .0883449
+        smsa |   .1783248   .0260792     6.84   0.000     .1272106    .2294391
+       black |  -.1755614   .0370195    -4.74   0.000    -.2481182   -.1030045
+      tenure |   .0203441   .0104931     1.94   0.053    -.0002221    .0409102
+      lambda |  -.5432683   .1432337    -3.79   0.000    -.8240011   -.2625355
+       _cons |  -.2213231   .1198433    -1.85   0.065    -.4562115    .0135654
+------------------------------------------------------------------------------
+sigma_1 =  .394017   sigma_0 =  .464616   rho_1 = -.845295   rho_0 = -1.16928
+
+Treatment effects (std. err.: influence function of the whole procedure)
+----------------------------------------------------------------------------
+Index    |   Estimate   Std. err.        z    P>|z|     [95% conf. interval]
+---------+------------------------------------------------------------------
+     ATT |    1.09796     .248728     4.41   0.000      .610461     1.58546
+     ATU |     .76054     .195189     3.90   0.000      .377976      1.1431
+     ATE |    .831091     .177648     4.68   0.000      .482908     1.17927
+   kappa |    .210207     .152303     1.38   0.168    -.0883019     .508717
+----------------------------------------------------------------------------
+kappa = rho1*sigma1 - rho0*sigma0;  ATT - ATU = kappa*(mean lambda1 + mean lambda0)
+Variance of ATT: parameters    .0611 + sampling  .000034 + covariance  .000762 (by observation)
+Common support of P(Z): [0.0725, 0.7015]
+
+. esrdiag
+
+Diagnostics of the selection equation (twostep estimation of ln_wage on treatment union)
+----------------------------------------------------------------------------
+Fit of the selection equation (probit of union on the whole of Z)
+  log likelihood   -592.1554   intercept only   -620.4271
+  pseudo-R2 0.0456   LR chi2(3) =    56.54   Prob > chi2 = 0.0000
+----------------------------------------------------------------------------
+Strength of the excluded instruments   south
+  LR test, with vs without them:  chi2(1) =    25.65   Prob > chi2 = 0.0000
+  pseudo-R2 of the probit:  with 0.0456   without 0.0249   increment 0.0207
+  per instrument (Wald chi2(1) in the full probit):
+                     south   -0.4895 ( 0.0933)   chi2 =    27.51
+----------------------------------------------------------------------------
+Variation of the score beyond X
+  Var(P | X) / Var(P) = 0.4453   (share of the variance of P(Z) not explained by X)
+  VIF of lambda_1 on X among the treated   =     2.12
+  VIF of lambda_0 on X among the untreated =     2.16
+----------------------------------------------------------------------------
+Support of P(Z)
+  treated   [0.0725, 0.7639]           untreated [0.0725, 0.7015]
+  common support [0.0725, 0.7015]
+  share of the treated outside the untreated range (ATT extrapolated):   0.0079
+  share of the untreated outside the treated range (ATU extrapolated):   0.0031
+  ATT: full     1.098   on the common support    1.0985
+  ATU: full    .76054   on the common support    .76044
+----------------------------------------------------------------------------
+no warning
+
+. esrtest, spec
+
+Specification of the selection equation
+(a) Link test: probit of union on v = Z g and its powers 2..2 (H0: the powers are zero)
+------------------------------------------------------------------
+  term                 |      Coef.   Std. err.        z    P>|z|
+----------------------+-------------------------------------------
+                   v  |     .56259      .41184     1.37    0.172
+                 v^2  |    -.29464      .26298    -1.12    0.263
+------------------------------------------------------------------
+  Wald chi2(1) =     1.26   Prob > chi2 = 0.2625
+
+(b) gamma: probit against FIML (H0: trivariate normality, A3; the gamma block of esrtest, normal)
+----------------------------------------------------------------------
+                          |     probit        FIML   difference   Std. err.
+--------------------------+-------------------------------------------
+                   south  |    -0.4895     -0.6040      0.1145      0.0315
+                   black  |     0.4398      0.4749     -0.0351      0.0111
+                  tenure  |     0.0998      0.0959      0.0039      0.0036
+                   _cons  |    -0.9680     -0.9273     -0.0407      0.0145
+----------------------------------------------------------------------
+  Wald chi2(4) =    13.82   Prob > chi2 = 0.0079
+Reading: (a) rejects when the index is not linear in Z (missing polynomials or
+interactions) or the link is not the normal cdf; both routes then use the wrong
+Mills ratios.  (b) rejects when the outcomes, read through trivariate normality,
+pull gamma away from the probit: A3 fails, or the index of (a) is misspecified.
+
+. esrtest, spec order(3)
+
+Specification of the selection equation
+(a) Link test: probit of union on v = Z g and its powers 2..3 (H0: the powers are zero)
+------------------------------------------------------------------
+  term                 |      Coef.   Std. err.        z    P>|z|
+----------------------+-------------------------------------------
+                   v  |     .53962      .51528     1.05    0.295
+                 v^2  |    -.34973      .79065    -0.44    0.658
+                 v^3  |   -.029123      .39449    -0.07    0.941
+------------------------------------------------------------------
+  Wald chi2(2) =     1.27   Prob > chi2 = 0.5311
+
+(b) gamma: probit against FIML (H0: trivariate normality, A3; the gamma block of esrtest, normal)
+----------------------------------------------------------------------
+                          |     probit        FIML   difference   Std. err.
+--------------------------+-------------------------------------------
+                   south  |    -0.4895     -0.6040      0.1145      0.0315
+                   black  |     0.4398      0.4749     -0.0351      0.0111
+                  tenure  |     0.0998      0.0959      0.0039      0.0036
+                   _cons  |    -0.9680     -0.9273     -0.0407      0.0145
+----------------------------------------------------------------------
+  Wald chi2(4) =    13.82   Prob > chi2 = 0.0079
+Reading: (a) rejects when the index is not linear in Z (missing polynomials or
+interactions) or the link is not the normal cdf; both routes then use the wrong
+Mills ratios.  (b) rejects when the outcomes, read through trivariate normality,
+pull gamma away from the probit: A3 fails, or the index of (a) is misspecified.
+
+. * ---- 2. selection on gains ----------------------------------------------------------------
+. esrtest, pdid
+
+Pseudo-DiD on the selection index (H0: no selection on gains, kappa = 0)
+(strata of the probit index Z'g; X-adjusted gap treated - untreated within each)
+------------------------------------------------------------------------------
+stratum |    n1     n0   mean P |     gap  Std. err. | mean lambda1  mean lambda0
+--------+----------------------+--------------------+--------------------------
+    1   |    89    516    0.139 |  0.1999     0.0349 |       1.5392        0.2593
+    2   |   164    441    0.270 |  0.1530     0.0252 |       1.1867        0.4485
+------------------------------------------------------------------------------
+  double difference of the gaps, top - bottom:     -0.0469  (s.e. 0.0432)
+  within treated,   top - bottom (C1):             0.0836  (s.e. 0.0433, z =   1.93)   sign of rho1*sigma1 = sign(C1/pi1
+> ), pi1 = -0.246
+  within untreated, top - bottom (C0):             0.0979  (s.e. 0.0269, z =   3.64)   sign of rho0*sigma0 = -sign(C0/pi
+> 0), pi0 =  0.126
+  rho1*sigma1 = C1/pi1 =  -0.3401 (s.e. 0.1798)    rho0*sigma0 = -C0/pi0 =  -0.7795 (s.e. 0.3000)
+  kappa_dd =   0.4394  (s.e. 0.3197, z =   1.37)     esreg kappa =   0.2102 (s.e. 0.1523)
+pi_j: the X-adjusted contrast of the Mills ratio lambda_j, top - bottom, in group j (the same
+regression as C_j with lambda_j for y).
+Std. err.: influence function of the whole procedure (probit, boundaries of the strata, regressions).
+note: the boundary between strata 1 and 2 sits on tied values of the index (1.4%
+  of the sample at one value), which a resample can move as a block: the standard errors
+  of the gaps, of the double difference and, less so, of C1 and C0 are approximate
+  (kappa_dd resists: C_j and pi_j move together); reps(#) gives the bootstrap of the whole procedure.
+note: the Mills contrast pi1 has a coefficient of variation of 23%: rho1*sigma1 = C1/pi1
+  and kappa_dd are far from normal and their standard errors approximate; read the sign of C1, or use reps(#).
+note: the Mills contrast pi0 has a coefficient of variation of 29%: rho0*sigma0 = -C0/pi0
+  and kappa_dd are far from normal and their standard errors approximate; read the sign of C0, or use reps(#).
+Reading: with kappa > 0 the gap falls across the strata (the eager treated at low P gain
+more, the reluctant untreated at high P would have gained less); the signs of C1 and C0 need
+only A2; kappa_dd uses the Mills ratios of A1. Never split on the outcome itself (collider).
+
+. esrtest, pdid nq(4)
+
+Pseudo-DiD on the selection index (H0: no selection on gains, kappa = 0)
+(strata of the probit index Z'g; X-adjusted gap treated - untreated within each)
+------------------------------------------------------------------------------
+stratum |    n1     n0   mean P |     gap  Std. err. | mean lambda1  mean lambda0
+--------+----------------------+--------------------+--------------------------
+    1   |    35    276    0.107 |  0.2221     0.0455 |       1.6605        0.2078
+    2   |    54    240    0.179 |  0.1752     0.0492 |       1.4605        0.3186
+    3   |    63    242    0.219 |  0.1672     0.0374 |       1.3424        0.3778
+    4   |   101    199    0.327 |  0.1181     0.0317 |       1.0896        0.5345
+------------------------------------------------------------------------------
+  double difference of the gaps, top - bottom:     -0.1040  (s.e. 0.0555)
+  within treated,   top - bottom (C1):             0.0839  (s.e. 0.0632, z =   1.33)   sign of rho1*sigma1 = sign(C1/pi1
+> ), pi1 = -0.403
+  within untreated, top - bottom (C0):             0.2052  (s.e. 0.0442, z =   4.64)   sign of rho0*sigma0 = -sign(C0/pi
+> 0), pi0 =  0.207
+  rho1*sigma1 = C1/pi1 =  -0.2079 (s.e. 0.1641)    rho0*sigma0 = -C0/pi0 =  -0.9899 (s.e. 0.2918)
+  kappa_dd =   0.7820  (s.e. 0.2989, z =   2.62)     esreg kappa =   0.2102 (s.e. 0.1523)
+pi_j: the X-adjusted contrast of the Mills ratio lambda_j, top - bottom, in group j (the same
+regression as C_j with lambda_j for y).
+Std. err.: influence function of the whole procedure (probit, boundaries of the strata, regressions).
+note: the boundary between strata 1 and 2 sits on tied values of the index (1.1%
+  of the sample at one value), which a resample can move as a block: the standard errors
+  of the gaps, of the double difference and, less so, of C1 and C0 are approximate
+  (kappa_dd resists: C_j and pi_j move together); reps(#) gives the bootstrap of the whole procedure.
+note: the boundary between strata 2 and 3 sits on tied values of the index (1.4%
+  of the sample at one value), which a resample can move as a block: the standard errors
+  of the gaps, of the double difference and, less so, of C1 and C0 are approximate
+  (kappa_dd resists: C_j and pi_j move together); reps(#) gives the bootstrap of the whole procedure.
+note: the Mills contrast pi1 has a coefficient of variation of 24%: rho1*sigma1 = C1/pi1
+  and kappa_dd are far from normal and their standard errors approximate; read the sign of C1, or use reps(#).
+note: the Mills contrast pi0 has a coefficient of variation of 20%: rho0*sigma0 = -C0/pi0
+  and kappa_dd are far from normal and their standard errors approximate; read the sign of C0, or use reps(#).
+Reading: with kappa > 0 the gap falls across the strata (the eager treated at low P gain
+more, the reluctant untreated at high P would have gained less); the signs of C1 and C0 need
+only A2; kappa_dd uses the Mills ratios of A1. Never split on the outcome itself (collider).
+
+. esreg ln_wage age grade smsa black tenure, select(union = south black tenure) method(twostep) kappa(grade) nolog
+
+Endogenous switching regression -- two-step     Number of obs =      1210
+Outcome: ln_wage   Treatment: union             Treated       =       253
+Std. err.: exact variance of the two-step procedure (stacked moments)
+------------------------------------------------------------------------------
+     ln_wage | Coefficient  Std. err.      z    P>|z|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+union        |
+       south |  -.4895032   .0941021    -5.20   0.000    -.6739399   -.3050666
+       black |   .4397974   .0976009     4.51   0.000     .2485031    .6310917
+      tenure |   .0997638   .0243689     4.09   0.000     .0520018    .1475259
+       _cons |  -.9679795    .074754   -12.95   0.000    -1.114495   -.8214643
+-------------+----------------------------------------------------------------
+ln_wage_1    |
+         age |   .0212055   .0065621     3.23   0.001     .0083441     .034067
+       grade |   .1229577   .0591428     2.08   0.038     .0070399    .2388754
+        smsa |   .1359683   .0413689     3.29   0.001     .0548867    .2170499
+       black |   -.206333   .0534634    -3.86   0.000    -.3111193   -.1015468
+      tenure |   .0070606   .0177378     0.40   0.691    -.0277048     .041826
+lambda_grade |  -.0506525   .0424346    -1.19   0.233    -.1338228    .0325177
+      lambda |   .2667139   .5304148     0.50   0.615    -.7728801    1.306308
+       _cons |   .2252254     .75538     0.30   0.766    -1.255292    1.705743
+-------------+----------------------------------------------------------------
+ln_wage_0    |
+         age |   .0255423   .0038545     6.63   0.000     .0179877     .033097
+       grade |    .050153   .0200203     2.51   0.012     .0109138    .0893921
+        smsa |   .1780876   .0260541     6.84   0.000     .1270226    .2291526
+       black |  -.1736985   .0361154    -4.81   0.000    -.2444834   -.1029136
+      tenure |   .0213803   .0102203     2.09   0.036     .0013489    .0414118
+lambda_grade |  -.0783381   .0625341    -1.25   0.210    -.2009026    .0442265
+      lambda |   .4237037   .7764246     0.55   0.585    -1.098061    1.945468
+       _cons |   .0926559   .2655499     0.35   0.727    -.4278123    .6131241
+------------------------------------------------------------------------------
+sigma_1 =  .415989   sigma_0 =  .469923   rho_1 = -.842635   rho_0 = -1.14253
+
+Treatment effects (std. err.: influence function of the whole procedure)
+----------------------------------------------------------------------------
+Index    |   Estimate   Std. err.        z    P>|z|     [95% conf. interval]
+---------+------------------------------------------------------------------
+     ATT |    1.07464     .246583     4.36   0.000      .591344     1.55793
+     ATU |     .79556     .189904     4.19   0.000      .423354     1.16777
+     ATE |    .853913     .173347     4.93   0.000      .514159     1.19367
+   kappa |    .182055     .150186     1.21   0.225     -.112303     .476414
+----------------------------------------------------------------------------
+kappa = rho1*sigma1 - rho0*sigma0;  ATT - ATU = kappa*(mean lambda1 + mean lambda0)
+Variance of ATT: parameters    .0606 + sampling  .000241 + covariance -.000081 (by observation)
+Common support of P(Z): [0.0725, 0.7015]
+
+. esrtest, kappa
+
+Test of constant selection on gains:  H0: kappa(x) = kappa
+(two-step estimation, kappa(x) = W(t1 - t0); Wald on the non-constant entries of t1 - t0)
+--------------------------------------------------------------------
+  d kappa / d w        |      Coef.   Std. err.        z    P>|z|
+------------------------+-------------------------------------------
+                 grade  |    .027686     .074992     0.37    0.712
+--------------------------------------------------------------------
+  Wald chi2(1) =     0.14     Prob > chi2 = 0.7120
+  kappa at the sample mean (esreg):   .18206 (s.e.   .1502)
+
+. * ---- 3. the joint law: levels against logs --------------------------------------------
+. esreg wage age grade smsa black tenure, select(union = south black tenure) method(twostep) nolog
+
+Endogenous switching regression -- two-step     Number of obs =      1210
+Outcome: wage   Treatment: union                Treated       =       253
+Std. err.: exact variance of the two-step procedure (stacked moments)
+------------------------------------------------------------------------------
+        wage | Coefficient  Std. err.      z    P>|z|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+union        |
+       south |  -.4895032   .0941021    -5.20   0.000    -.6739399   -.3050666
+       black |   .4397974   .0976009     4.51   0.000     .2485031    .6310917
+      tenure |   .0997638   .0243689     4.09   0.000     .0520018    .1475259
+       _cons |  -.9679795    .074754   -12.95   0.000    -1.114495   -.8214643
+-------------+----------------------------------------------------------------
+wage_1       |
+         age |   .1578899   .0447917     3.52   0.000     .0700997    .2456801
+       grade |   .3627229    .066466     5.46   0.000     .2324519    .4929939
+        smsa |   .9856943    .280083     3.52   0.000     .4367418    1.534647
+       black |  -1.445851    .365707    -3.95   0.000    -2.162623   -.7290783
+      tenure |  -.0145827   .1215152    -0.12   0.904    -.2527482    .2235828
+      lambda |  -2.269267   .7402668    -3.07   0.002    -3.720163   -.8183703
+       _cons |   1.119126   1.726529     0.65   0.517     -2.26481    4.503061
+-------------+----------------------------------------------------------------
+wage_0       |
+         age |   .1556984   .0246841     6.31   0.000     .1073185    .2040783
+       grade |   .4427621   .0435846    10.16   0.000     .3573379    .5281863
+        smsa |   .8191817   .1463472     5.60   0.000     .5323464    1.106017
+       black |   -.830978   .1787375    -4.65   0.000    -1.181297   -.4806589
+      tenure |   .1020109   .0585707     1.74   0.082    -.0127856    .2168074
+      lambda |  -2.632451   .8038156    -3.27   0.001    -4.207901   -1.057002
+       _cons |  -5.129803    .798679    -6.42   0.000    -6.695185   -3.564421
+------------------------------------------------------------------------------
+sigma_1 =  2.85044   sigma_0 =  2.44351   rho_1 =  -.79611   rho_0 = -1.07732
+
+Treatment effects (std. err.: influence function of the whole procedure)
+----------------------------------------------------------------------------
+Index    |   Estimate   Std. err.        z    P>|z|     [95% conf. interval]
+---------+------------------------------------------------------------------
+     ATT |    5.45179     1.38997     3.92   0.000       2.7275     8.17609
+     ATU |    4.95229     1.32307     3.74   0.000      2.35913     7.54545
+     ATE |    5.05673     1.16731     4.33   0.000      2.76884     7.34462
+   kappa |    .363185      .93135     0.39   0.697     -1.46223      2.1886
+----------------------------------------------------------------------------
+kappa = rho1*sigma1 - rho0*sigma0;  ATT - ATU = kappa*(mean lambda1 + mean lambda0)
+Variance of ATT: parameters     1.92 + sampling  .000701 + covariance   .00811 (by observation)
+Common support of P(Z): [0.0725, 0.7015]
+
+. esrtest, normal
+
+Normality by regime
+(a) Hausman contrast, FIML vs two-step (H0: trivariate normality, A3)
+----------------------------------------------------------------------
+                          |   two-step        FIML   difference   Std. err.
+--------------------------+-------------------------------------------
+             union:south  |    -0.4895     -0.5229      0.0334      0.0589
+             union:black  |     0.4398      0.4741     -0.0343      0.0320
+            union:tenure  |     0.0998      0.0515      0.0483      0.0127
+             union:_cons  |    -0.9680     -0.8064     -0.1615      0.0396
+              wage_1:age  |     0.1579      0.1578      0.0000      0.0053
+            wage_1:grade  |     0.3627      0.3798     -0.0170      0.0077
+             wage_1:smsa  |     0.9857      1.0645     -0.0788      0.0449
+            wage_1:black  |    -1.4459     -1.1252     -0.3207      0.1797
+           wage_1:tenure  |    -0.0146      0.1215     -0.1361      0.0613
+            wage_1:_cons  |     1.1191     -1.5427      2.6618      1.0937
+       wage_1:rho1sigma1  |    -2.2693     -0.7978     -1.4715      0.6240
+              wage_0:age  |     0.1557      0.1239      0.0318      0.0112
+            wage_0:grade  |     0.4428      0.3927      0.0501      0.0175
+             wage_0:smsa  |     0.8192      0.8541     -0.0349      0.0654
+            wage_0:black  |    -0.8310     -0.7510     -0.0800      0.1025
+           wage_0:tenure  |     0.1020      0.1348     -0.0328      0.0403
+            wage_0:_cons  |    -5.1298     -3.6201     -1.5097      0.4132
+       wage_0:rho0sigma0  |    -2.6325     -1.9408     -0.6916      0.8483
+----------------------------------------------------------------------
+  Hausman chi2(18) =    55.84   Prob > chi2 = 0.0000
+  kappa: two-step   .36318   FIML    1.143   difference  -.77986 (s.e.   .8972, z =  -0.87)
+  Std. err. of the differences from the influence functions of the two estimators.
+
+(b) Hermite controls beside the Mills ratio (H0: E[omega_j | u] linear in u, A2)
+--------------------------------------------------------------------
+  control                |      Coef.   Std. err.        z    P>|z|
+------------------------+-------------------------------------------
+  regime 1 (wage_1)
+        E[u^2-1 | D,Z]  |    -8.3484      7.1622    -1.17    0.244
+       E[u^3-3u | D,Z]  |     2.7282      2.0762     1.31    0.189
+  regime 0 (wage_0)
+        E[u^2-1 | D,Z]  |     -.4099      1.7596    -0.23    0.816
+       E[u^3-3u | D,Z]  |     7.0887      5.2478     1.35    0.177
+--------------------------------------------------------------------
+  joint      Wald chi2(4) =     3.66   Prob > chi2 = 0.4540
+  regime 1   Wald chi2(2) =     2.47   Prob > chi2 = 0.2906
+  regime 0   Wald chi2(2) =     2.02   Prob > chi2 = 0.3651
+  cubic terms (u^3-3u, both regimes) Wald chi2(2) =     2.73   Prob > chi2 = 0.2552
+Reading: (a) rejects when the regime laws are not normal (the likelihood is then
+inconsistent, the two-step is not); (b) rejects when E[omega_j | u] bends (both routes
+lose the curve; the augmented two-step, esreg ..., method(twostep) hermite(#), fits it,
+of order 3 if the cubic terms reject, else 2; the semiparametric MTE of esrmte checks it).
+
+. esreg ln_wage age grade smsa black tenure, select(union = south black tenure) method(twostep) nolog
+
+Endogenous switching regression -- two-step     Number of obs =      1210
+Outcome: ln_wage   Treatment: union             Treated       =       253
+Std. err.: exact variance of the two-step procedure (stacked moments)
+------------------------------------------------------------------------------
+     ln_wage | Coefficient  Std. err.      z    P>|z|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+union        |
+       south |  -.4895032   .0941021    -5.20   0.000    -.6739399   -.3050666
+       black |   .4397974   .0976009     4.51   0.000     .2485031    .6310917
+      tenure |   .0997638   .0243689     4.09   0.000     .0520018    .1475259
+       _cons |  -.9679795    .074754   -12.95   0.000    -1.114495   -.8214643
+-------------+----------------------------------------------------------------
+ln_wage_1    |
+         age |   .0218579   .0065597     3.33   0.001     .0090012    .0347146
+       grade |   .0534746   .0077535     6.90   0.000     .0382781    .0686712
+        smsa |   .1343401   .0418303     3.21   0.001     .0523543     .216326
+       black |  -.2061484   .0533007    -3.87   0.000    -.3106158    -.101681
+      tenure |   .0086532   .0178625     0.48   0.628    -.0263568    .0436631
+      lambda |  -.3330608   .1102159    -3.02   0.003      -.54908   -.1170415
+       _cons |   1.032811   .2592975     3.98   0.000     .5245972    1.541025
+-------------+----------------------------------------------------------------
+ln_wage_0    |
+         age |   .0257023   .0038474     6.68   0.000     .0181615    .0332431
+       grade |   .0754771   .0065653    11.50   0.000     .0626094    .0883449
+        smsa |   .1783248   .0260792     6.84   0.000     .1272106    .2294391
+       black |  -.1755614   .0370195    -4.74   0.000    -.2481182   -.1030045
+      tenure |   .0203441   .0104931     1.94   0.053    -.0002221    .0409102
+      lambda |  -.5432683   .1432337    -3.79   0.000    -.8240011   -.2625355
+       _cons |  -.2213231   .1198433    -1.85   0.065    -.4562115    .0135654
+------------------------------------------------------------------------------
+sigma_1 =  .394017   sigma_0 =  .464616   rho_1 = -.845295   rho_0 = -1.16928
+
+Treatment effects (std. err.: influence function of the whole procedure)
+----------------------------------------------------------------------------
+Index    |   Estimate   Std. err.        z    P>|z|     [95% conf. interval]
+---------+------------------------------------------------------------------
+     ATT |    1.09796     .248728     4.41   0.000      .610461     1.58546
+     ATU |     .76054     .195189     3.90   0.000      .377976      1.1431
+     ATE |    .831091     .177648     4.68   0.000      .482908     1.17927
+   kappa |    .210207     .152303     1.38   0.168    -.0883019     .508717
+----------------------------------------------------------------------------
+kappa = rho1*sigma1 - rho0*sigma0;  ATT - ATU = kappa*(mean lambda1 + mean lambda0)
+Variance of ATT: parameters    .0611 + sampling  .000034 + covariance  .000762 (by observation)
+Common support of P(Z): [0.0725, 0.7015]
+
+. esrtest, normal
+
+Normality by regime
+(a) Hausman contrast, FIML vs two-step (H0: trivariate normality, A3)
+----------------------------------------------------------------------
+                          |   two-step        FIML   difference   Std. err.
+--------------------------+-------------------------------------------
+             union:south  |    -0.4895     -0.6040      0.1145      0.0315
+             union:black  |     0.4398      0.4749     -0.0351      0.0111
+            union:tenure  |     0.0998      0.0959      0.0039      0.0036
+             union:_cons  |    -0.9680     -0.9273     -0.0407      0.0145
+           ln_wage_1:age  |     0.0219      0.0221     -0.0002      0.0005
+         ln_wage_1:grade  |     0.0535      0.0545     -0.0010      0.0008
+          ln_wage_1:smsa  |     0.1343      0.1407     -0.0063      0.0043
+         ln_wage_1:black  |    -0.2061     -0.1738     -0.0323      0.0209
+        ln_wage_1:tenure  |     0.0087      0.0206     -0.0120      0.0071
+         ln_wage_1:_cons  |     1.0328      0.7703      0.2625      0.1404
+    ln_wage_1:rho1sigma1  |    -0.3331     -0.1822     -0.1509      0.0810
+           ln_wage_0:age  |     0.0257      0.0241      0.0016      0.0006
+         ln_wage_0:grade  |     0.0755      0.0774     -0.0020      0.0008
+          ln_wage_0:smsa  |     0.1783      0.2003     -0.0219      0.0061
+         ln_wage_0:black  |    -0.1756     -0.1262     -0.0494      0.0237
+        ln_wage_0:tenure  |     0.0203      0.0402     -0.0198      0.0076
+         ln_wage_0:_cons  |    -0.2213     -0.1271     -0.0942      0.0361
+    ln_wage_0:rho0sigma0  |    -0.5433     -0.1251     -0.4182      0.1387
+----------------------------------------------------------------------
+  Hausman chi2(18) =    29.72   Prob > chi2 = 0.0402
+  kappa: two-step   .21021   FIML -.057148   difference   .26736 (s.e.   .1302, z =   2.05)
+  Std. err. of the differences from the influence functions of the two estimators.
+
+(b) Hermite controls beside the Mills ratio (H0: E[omega_j | u] linear in u, A2)
+--------------------------------------------------------------------
+  control                |      Coef.   Std. err.        z    P>|z|
+------------------------+-------------------------------------------
+  regime 1 (ln_wage_1)
+        E[u^2-1 | D,Z]  |    -1.7663      1.1195    -1.58    0.115
+       E[u^3-3u | D,Z]  |     .57821      .33129     1.75    0.081
+  regime 0 (ln_wage_0)
+        E[u^2-1 | D,Z]  |   -.043047      .32892    -0.13    0.896
+       E[u^3-3u | D,Z]  |     1.5942      1.1198     1.42    0.155
+--------------------------------------------------------------------
+  joint      Wald chi2(4) =     4.86   Prob > chi2 = 0.3020
+  regime 1   Wald chi2(2) =     4.01   Prob > chi2 = 0.1348
+  regime 0   Wald chi2(2) =     2.68   Prob > chi2 = 0.2614
+  cubic terms (u^3-3u, both regimes) Wald chi2(2) =     3.43   Prob > chi2 = 0.1802
+Reading: (a) rejects when the regime laws are not normal (the likelihood is then
+inconsistent, the two-step is not); (b) rejects when E[omega_j | u] bends (both routes
+lose the curve; the augmented two-step, esreg ..., method(twostep) hermite(#), fits it,
+of order 3 if the cubic terms reject, else 2; the semiparametric MTE of esrmte checks it).
+
+. * the FIML on the wage in levels (Table: the levels column) and its gamma contrast
+. esreg wage age grade smsa black tenure, select(union = south black tenure) nolog
+
+
+Endogenous switching regression -- full information ML
+
+                                                        Number of obs =  1,210
+                                                        Wald chi2(5)  =  96.51
+Log likelihood = -3008.421                              Prob > chi2   = 0.0000
+
+------------------------------------------------------------------------------
+        wage | Coefficient  Std. err.      z    P>|z|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+wage_1       |
+         age |   .1578498   .0485567     3.25   0.001     .0626804    .2530192
+       grade |   .3797604   .0619886     6.13   0.000     .2582649    .5012559
+        smsa |   1.064471   .3339664     3.19   0.001     .4099089    1.719033
+       black |  -1.125199    .309978    -3.63   0.000    -1.732745   -.5176533
+      tenure |   .1214786   .0851853     1.43   0.154    -.0454815    .2884386
+       _cons |  -1.542697   1.395512    -1.11   0.269    -4.277851    1.192457
+-------------+----------------------------------------------------------------
+wage_0       |
+         age |   .1238633   .0196539     6.30   0.000     .0853425    .1623842
+       grade |   .3926737   .0327402    11.99   0.000     .3285042    .4568433
+        smsa |   .8541254   .1250851     6.83   0.000     .6089632    1.099288
+       black |   -.750988   .1539197    -4.88   0.000    -1.052665   -.4493109
+      tenure |   .1347967    .040556     3.32   0.001     .0553083     .214285
+       _cons |  -3.620086   .5650353    -6.41   0.000    -4.727535   -2.512637
+-------------+----------------------------------------------------------------
+union        |
+       south |   -.522858   .0781887    -6.69   0.000    -.6761051   -.3696109
+       black |   .4741427   .0925658     5.12   0.000     .2927169    .6555684
+      tenure |    .051472   .0219107     2.35   0.019     .0085279    .0944161
+       _cons |  -.8064324    .065518   -12.31   0.000    -.9348454   -.6780194
+-------------+----------------------------------------------------------------
+lnsigma_1    |
+       _cons |   .7843834   .0683691    11.47   0.000     .6503823    .9183844
+-------------+----------------------------------------------------------------
+lnsigma_0    |
+       _cons |   .7641766   .0280182    27.27   0.000     .7092619    .8190912
+-------------+----------------------------------------------------------------
+atanhrho_1   |
+       _cons |  -.3816064   .1892738    -2.02   0.044    -.7525761   -.0106366
+-------------+----------------------------------------------------------------
+atanhrho_0   |
+       _cons |  -1.492978   .1032416   -14.46   0.000    -1.695328   -1.290628
+------------------------------------------------------------------------------
+LR test of independent equations (rho1 = rho0 = 0): chi2(2) =    93.68   Prob > chi2 = 0.0000
+sigma_1 =  2.19106   sigma_0 =  2.14723   rho_1 = -.364102   rho_0 = -.903871
+
+Treatment effects (std. err.: influence function of the whole procedure)
+----------------------------------------------------------------------------
+Index    |   Estimate   Std. err.        z    P>|z|     [95% conf. interval]
+---------+------------------------------------------------------------------
+     ATT |     4.1863     .193813    21.60   0.000      3.80643     4.56617
+     ATU |    2.32624     .695486     3.34   0.001      .963112     3.68937
+     ATE |    2.71516     .555482     4.89   0.000      1.62644     3.80389
+   kappa |    1.14305      .41246     2.77   0.006      .334641     1.95146
+----------------------------------------------------------------------------
+kappa = rho1*sigma1 - rho0*sigma0;  ATT - ATU = kappa*(mean lambda1 + mean lambda0)
+Variance of ATT: parameters    .0369 + sampling  .000541 + covariance    .0001 (by observation)
+Common support of P(Z): [0.0919, 0.4771]
+
+. esrtest, spec
+
+Specification of the selection equation
+(a) Link test: probit of union on v = Z g and its powers 2..2 (H0: the powers are zero)
+------------------------------------------------------------------
+  term                 |      Coef.   Std. err.        z    P>|z|
+----------------------+-------------------------------------------
+                   v  |     .56259      .41184     1.37    0.172
+                 v^2  |    -.29464      .26298    -1.12    0.263
+------------------------------------------------------------------
+  Wald chi2(1) =     1.26   Prob > chi2 = 0.2625
+
+(b) gamma: probit against FIML (H0: trivariate normality, A3; the gamma block of esrtest, normal)
+----------------------------------------------------------------------
+                          |     probit        FIML   difference   Std. err.
+--------------------------+-------------------------------------------
+                   south  |    -0.4895     -0.5229      0.0334      0.0589
+                   black  |     0.4398      0.4741     -0.0343      0.0320
+                  tenure  |     0.0998      0.0515      0.0483      0.0127
+                   _cons  |    -0.9680     -0.8064     -0.1615      0.0396
+----------------------------------------------------------------------
+  Wald chi2(4) =    22.79   Prob > chi2 = 0.0001
+Reading: (a) rejects when the index is not linear in Z (missing polynomials or
+interactions) or the link is not the normal cdf; both routes then use the wrong
+Mills ratios.  (b) rejects when the outcomes, read through trivariate normality,
+pull gamma away from the probit: A3 fails, or the index of (a) is misspecified.
+
+. * ---- 4. effects, profile, MTE: the two routes side by side ---------------------------------
+. esreg ln_wage age grade smsa black tenure, select(union = south black tenure) nolog store(fiml)
+
+
+Endogenous switching regression -- full information ML
+
+                                                        Number of obs =  1,210
+                                                        Wald chi2(5)  = 118.93
+Log likelihood = -865.5426                              Prob > chi2   = 0.0000
+
+------------------------------------------------------------------------------
+     ln_wage | Coefficient  Std. err.      z    P>|z|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+ln_wage_1    |
+         age |   .0221056   .0063064     3.51   0.000     .0097452     .034466
+       grade |   .0545095   .0080476     6.77   0.000     .0387365    .0702824
+        smsa |   .1406696   .0432185     3.25   0.001     .0559629    .2253763
+       black |  -.1738415   .0422406    -4.12   0.000    -.2566316   -.0910515
+      tenure |   .0206175   .0120822     1.71   0.088    -.0030631    .0442981
+       _cons |   .7702958     .19215     4.01   0.000     .3936887    1.146903
+-------------+----------------------------------------------------------------
+ln_wage_0    |
+         age |   .0240746   .0036832     6.54   0.000     .0168557    .0312936
+       grade |   .0774459    .005871    13.19   0.000     .0659391    .0889528
+        smsa |   .2002747   .0233713     8.57   0.000     .1544678    .2460815
+       black |  -.1261898   .0249989    -5.05   0.000    -.1751868   -.0771927
+      tenure |   .0401619   .0067571     5.94   0.000     .0269182    .0534057
+       _cons |  -.1271492   .1025964    -1.24   0.215    -.3282345    .0739361
+-------------+----------------------------------------------------------------
+union        |
+       south |  -.6039546   .0901485    -6.70   0.000    -.7806425   -.4272667
+       black |   .4748915   .0972948     4.88   0.000     .2841973    .6655858
+      tenure |   .0958627   .0234257     4.09   0.000     .0499491    .1417763
+       _cons |  -.9273253   .0738508   -12.56   0.000     -1.07207   -.7825804
+-------------+----------------------------------------------------------------
+lnsigma_1    |
+       _cons |  -1.163371   .0972354   -11.96   0.000    -1.353949   -.9727935
+-------------+----------------------------------------------------------------
+lnsigma_0    |
+       _cons |  -1.126405   .0289169   -38.95   0.000    -1.183082   -1.069729
+-------------+----------------------------------------------------------------
+atanhrho_1   |
+       _cons |  -.6672692   .2185038    -3.05   0.002    -1.095529   -.2390096
+-------------+----------------------------------------------------------------
+atanhrho_0   |
+       _cons |  -.4067873   .1179421    -3.45   0.001    -.6379497    -.175625
+------------------------------------------------------------------------------
+LR test of independent equations (rho1 = rho0 = 0): chi2(2) =    14.05   Prob > chi2 = 0.0009
+sigma_1 =  .312431   sigma_0 =  .324197   rho_1 = -.583181   rho_0 = -.385741
+
+Treatment effects (std. err.: influence function of the whole procedure)
+----------------------------------------------------------------------------
+Index    |   Estimate   Std. err.        z    P>|z|     [95% conf. interval]
+---------+------------------------------------------------------------------
+     ATT |    .387122    .0620373     6.24   0.000      .265531     .508713
+     ATU |    .498531     .106818     4.67   0.000      .289172     .707891
+     ATE |    .475237    .0858004     5.54   0.000      .307071     .643402
+   kappa |  -.0571477    .0712311    -0.80   0.422     -.196758    .0824626
+----------------------------------------------------------------------------
+kappa = rho1*sigma1 - rho0*sigma0;  ATT - ATU = kappa*(mean lambda1 + mean lambda0)
+Variance of ATT: parameters   .00382 + sampling  .000017 + covariance  8.9e-06 (by observation)
+Common support of P(Z): [0.0629, 0.6662]
+
+. predict double P, pr
+
+. esrcurve, rank(P) nq(5)
+
+Expected treatment effect by quantile of P (nq = 5), fiml estimation of ln_wage on treatment union
+------------------------------------------------------------------------------------
+  q  |  mean(P) |   Treated   Std. err.|  Untreated  Std. err.|     All     Std. err.
+-----+--------------+----------------------+----------------------+----------------------
+   1 |       0.0855 |    0.4085     0.0829 |    0.5129     0.1033 |    0.5025     0.0919
+   2 |       0.1702 |    0.4055     0.0691 |    0.5219     0.1072 |    0.5016     0.0891
+   3 |       0.2006 |    0.4124     0.0651 |    0.5086     0.1123 |    0.4897     0.0914
+   4 |       0.2443 |    0.3661     0.0631 |    0.4832     0.1085 |    0.4555     0.0853
+   5 |       0.3595 |    0.3719     0.0592 |    0.4543     0.1106 |    0.4260     0.0791
+------------------------------------------------------------------------------------
+Std. err.: influence function (parameters + within-cell sampling + covariance); groups by weighted quantiles of P
+
+. esrmte, semipar
+
+Marginal treatment effect at percentiles of the participation unobservable
+(fiml estimation; MTE(u) = m + kappa*invnormal(1-u), m =    .4751, kappa = -.057148)
+----------------------------------------------
+   u    |   MTE(u)     Std. err.|  support
+--------+------------------------+------------
+  0.050 |     0.3811      0.0748|  extrapol.
+  0.100 |     0.4019      0.0601|  observed
+  0.250 |     0.4366      0.0575|  observed
+  0.500 |     0.4751      0.0857|  observed
+  0.750 |     0.5136      0.1265|  extrapol.
+  0.900 |     0.5483      0.1665|  extrapol.
+  0.950 |     0.5691      0.1911|  extrapol.
+----------------------------------------------
+support: u inside the common support of P(Z) [0.0629, 0.6662]
+
+Semiparametric MTE (percentile-weights regression on the probit score, derivative-aware bandwidth)
+-------------------------------------------------------------------------------
+  tau  | p_tau  | parametric|     PWR     Std. err.|    h   |  N_eff | width p
+-------+--------+-----------+----------------------+--------+--------+---------
+  0.05 |  0.080 |    0.3947 |   -3.3994     1.9851 |  0.167 |    552 |   0.097
+  0.10 |  0.089 |    0.3980 |   -2.7554     1.5360 |  0.167 |    609 |   0.101
+  0.25 |  0.165 |    0.4193 |    1.0490     0.9726 |  0.084 |    487 |   0.074
+  0.50 |  0.193 |    0.4255 |    0.9389     0.2349 |  0.117 |    707 |   0.054
+  0.75 |  0.255 |    0.4374 |    1.4932     0.3298 |  0.117 |    638 |   0.128
+  0.90 |  0.316 |    0.4478 |    2.2397     0.5420 |  0.084 |    372 |   0.210
+  0.95 |  0.384 |    0.4582 |    3.5125     0.9543 |  0.084 |    312 |   0.194
+-------------------------------------------------------------------------------
+tau: quantile of the probit score; p_tau: the score at that quantile; parametric: the curve above at u = p_tau.
+PWR std. err. exclude the estimation of the score.
+
+. esreg ln_wage age grade smsa black tenure, select(union = south black tenure) method(twostep) nolog store(ts)
+
+Endogenous switching regression -- two-step     Number of obs =      1210
+Outcome: ln_wage   Treatment: union             Treated       =       253
+Std. err.: exact variance of the two-step procedure (stacked moments)
+------------------------------------------------------------------------------
+     ln_wage | Coefficient  Std. err.      z    P>|z|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+union        |
+       south |  -.4895032   .0941021    -5.20   0.000    -.6739399   -.3050666
+       black |   .4397974   .0976009     4.51   0.000     .2485031    .6310917
+      tenure |   .0997638   .0243689     4.09   0.000     .0520018    .1475259
+       _cons |  -.9679795    .074754   -12.95   0.000    -1.114495   -.8214643
+-------------+----------------------------------------------------------------
+ln_wage_1    |
+         age |   .0218579   .0065597     3.33   0.001     .0090012    .0347146
+       grade |   .0534746   .0077535     6.90   0.000     .0382781    .0686712
+        smsa |   .1343401   .0418303     3.21   0.001     .0523543     .216326
+       black |  -.2061484   .0533007    -3.87   0.000    -.3106158    -.101681
+      tenure |   .0086532   .0178625     0.48   0.628    -.0263568    .0436631
+      lambda |  -.3330608   .1102159    -3.02   0.003      -.54908   -.1170415
+       _cons |   1.032811   .2592975     3.98   0.000     .5245972    1.541025
+-------------+----------------------------------------------------------------
+ln_wage_0    |
+         age |   .0257023   .0038474     6.68   0.000     .0181615    .0332431
+       grade |   .0754771   .0065653    11.50   0.000     .0626094    .0883449
+        smsa |   .1783248   .0260792     6.84   0.000     .1272106    .2294391
+       black |  -.1755614   .0370195    -4.74   0.000    -.2481182   -.1030045
+      tenure |   .0203441   .0104931     1.94   0.053    -.0002221    .0409102
+      lambda |  -.5432683   .1432337    -3.79   0.000    -.8240011   -.2625355
+       _cons |  -.2213231   .1198433    -1.85   0.065    -.4562115    .0135654
+------------------------------------------------------------------------------
+sigma_1 =  .394017   sigma_0 =  .464616   rho_1 = -.845295   rho_0 = -1.16928
+
+Treatment effects (std. err.: influence function of the whole procedure)
+----------------------------------------------------------------------------
+Index    |   Estimate   Std. err.        z    P>|z|     [95% conf. interval]
+---------+------------------------------------------------------------------
+     ATT |    1.09796     .248728     4.41   0.000      .610461     1.58546
+     ATU |     .76054     .195189     3.90   0.000      .377976      1.1431
+     ATE |    .831091     .177648     4.68   0.000      .482908     1.17927
+   kappa |    .210207     .152303     1.38   0.168    -.0883019     .508717
+----------------------------------------------------------------------------
+kappa = rho1*sigma1 - rho0*sigma0;  ATT - ATU = kappa*(mean lambda1 + mean lambda0)
+Variance of ATT: parameters    .0611 + sampling  .000034 + covariance  .000762 (by observation)
+Common support of P(Z): [0.0725, 0.7015]
+
+. esrcurve, rank(P) nq(5) graph saving("paper/fig_union3_curve.gph", replace) ///
+>     title("Effect of union membership on ln(wage) by quintile of P(Z)")
+
+Expected treatment effect by quantile of P (nq = 5), twostep estimation of ln_wage on treatment union
+------------------------------------------------------------------------------------
+  q  |  mean(P) |   Treated   Std. err.|  Untreated  Std. err.|     All     Std. err.
+-----+--------------+----------------------+----------------------+----------------------
+   1 |       0.0855 |    1.2209     0.2827 |    0.8090     0.1940 |    0.8500     0.1866
+   2 |       0.1702 |    1.1558     0.2590 |    0.7894     0.1961 |    0.8532     0.1811
+   3 |       0.2006 |    1.1411     0.2528 |    0.7667     0.2046 |    0.8402     0.1853
+   4 |       0.2443 |    1.0728     0.2468 |    0.7346     0.1952 |    0.8146     0.1762
+   5 |       0.3595 |    1.0249     0.2307 |    0.6776     0.1921 |    0.7967     0.1661
+------------------------------------------------------------------------------------
+Std. err.: influence function (parameters + within-cell sampling + covariance); groups by weighted quantiles of P
+(file paper/fig_union3_curve.gph not found)
+file paper/fig_union3_curve.gph saved
+
+. graph export "paper/fig_union3_curve.pdf", replace
+file paper/fig_union3_curve.pdf saved as PDF format
+
+. esrmte, semipar graph saving("paper/fig_union3_mte.gph", replace)
+
+Marginal treatment effect at percentiles of the participation unobservable
+(twostep estimation; MTE(u) = m + kappa*invnormal(1-u), m =   .83109, kappa =   .21021)
+----------------------------------------------
+   u    |   MTE(u)     Std. err.|  support
+--------+------------------------+------------
+  0.050 |     1.1769      0.2809|  extrapol.
+  0.100 |     1.1005      0.2401|  observed
+  0.250 |     0.9729      0.1892|  observed
+  0.500 |     0.8311      0.1776|  observed
+  0.750 |     0.6893      0.2201|  extrapol.
+  0.900 |     0.5617      0.2858|  extrapol.
+  0.950 |     0.4853      0.3313|  extrapol.
+----------------------------------------------
+support: u inside the common support of P(Z) [0.0725, 0.7015]
+
+Semiparametric MTE (percentile-weights regression on the probit score, derivative-aware bandwidth)
+-------------------------------------------------------------------------------
+  tau  | p_tau  | parametric|     PWR     Std. err.|    h   |  N_eff | width p
+-------+--------+-----------+----------------------+--------+--------+---------
+  0.05 |  0.080 |    1.1270 |   -3.3994     1.9851 |  0.167 |    552 |   0.097
+  0.10 |  0.089 |    1.1147 |   -2.7554     1.5360 |  0.167 |    609 |   0.101
+  0.25 |  0.165 |    1.0363 |    1.0490     0.9726 |  0.084 |    487 |   0.074
+  0.50 |  0.193 |    1.0134 |    0.9389     0.2349 |  0.117 |    707 |   0.054
+  0.75 |  0.255 |    0.9699 |    1.4932     0.3298 |  0.117 |    638 |   0.128
+  0.90 |  0.316 |    0.9316 |    2.2397     0.5420 |  0.084 |    372 |   0.210
+  0.95 |  0.384 |    0.8932 |    3.5125     0.9543 |  0.084 |    312 |   0.194
+-------------------------------------------------------------------------------
+tau: quantile of the probit score; p_tau: the score at that quantile; parametric: the curve above at u = p_tau.
+PWR std. err. exclude the estimation of the score.
+(file paper/fig_union3_mte.gph not found)
+file paper/fig_union3_mte.gph saved
+
+. graph export "paper/fig_union3_mte.pdf", replace
+file paper/fig_union3_mte.pdf saved as PDF format
+
+. matrix list r(mte)
+
+r(mte)[7,4]
+            u        mte         se    support
+r1        .05  1.1768516  .28088383          0
+r2         .1  1.1004828  .24008396          1
+r3        .25  .97287384  .18917645          1
+r4         .5  .83109106  .17764768          1
+r5        .75  .68930827  .22008043          0
+r6         .9  .56169934  .28578187          0
+r7        .95  .48533053  .33126898          0
+
+. matrix list r(mte_sp)
+
+r(mte_sp)[7,8]
+           tau       p_tau  parametric         pwr          se           h        neff     width_p
+r1         .05   .07962466   1.1269793  -3.3994113   1.9851278   .16722921   552.40763   .09706763
+r2          .1   .08860342   1.1147461  -2.7554338   1.5360182   .16722921   609.36989   .10131987
+r3         .25   .16450324   1.0362782   1.0490141   .97256421   .08361461   486.65369   .07445346
+r4          .5   .19291256   1.0133858   .93887824   .23492059   .11706045   706.78191   .05362117
+r5         .75   .25456332   .96986966    1.493188   .32977947   .11706045   637.86061   .12789075
+r6          .9    .3162183   .93163332   2.2397493   .54202705   .08361461   371.93216   .21032448
+r7         .95   .38384426    .8931863   3.5124786   .95433828   .08361461   312.43827   .19364274
+
+. esrmte, est(fiml)
+
+Marginal treatment effect at percentiles of the participation unobservable
+(fiml estimation; MTE(u) = m + kappa*invnormal(1-u), m =    .4751, kappa = -.057148)
+----------------------------------------------
+   u    |   MTE(u)     Std. err.|  support
+--------+------------------------+------------
+  0.050 |     0.3811      0.0748|  extrapol.
+  0.100 |     0.4019      0.0601|  observed
+  0.250 |     0.4366      0.0575|  observed
+  0.500 |     0.4751      0.0857|  observed
+  0.750 |     0.5136      0.1265|  extrapol.
+  0.900 |     0.5483      0.1665|  extrapol.
+  0.950 |     0.5691      0.1911|  extrapol.
+----------------------------------------------
+support: u inside the common support of P(Z) [0.0629, 0.6662]
+
+. * ---- 5. the reading ----------------------------------------------------------------------
+. esrreport, export("paper/reading_union3.txt") replace
+
+------------------------------------------------------------------------------
+Reading of the esreg estimation of ln_wage on union (twostep, N = 1210, treated = 253)
+------------------------------------------------------------------------------
+1. The selection equation
+   excluded instrument(s): south   LR chi2(1) =  25.65   Var(P|X)/Var(P) = 0.445   max VIF(lambda) =  2.16
+   note 1: a single excluded instrument: index sufficiency cannot be tested (the instrument tests itself, Section 4.2) a
+> nd part of the identification is by form; a second instrument would make the exclusion testable.
+   link test of the index: p = 0.263 (no sign of a misspecified index)
+   support of P(Z): [0.072, 0.701]   extrapolated: treated 0.008, untreated 0.003
+2. Selection on gains
+   kappa = rho1 sigma1 - rho0 sigma0 =    .2102 (s.e.   .1523, z =  1.38)   rho1 = -0.845   rho0 = -1.169
+   pseudo-DiD on the index (4 strata): kappa_dd =     .782 (s.e.   .2989)   C1 =  .08385 (z  1.3)   C0 =   .2052 (z  4.6
+> )
+   note 2: only one within-group contrast is significant, C0 (untreated): rho0 sigma0 is negative; the other regime show
+> s no selection on unobservables in the strata, and selection on gains (their difference) is not established without th
+> e parametric model.
+   note 3: kappa is not significantly different from zero: the ATT, ATU and ATE do not differ beyond sampling error; the
+>  model of a common effect is not rejected on this ground, but a wide standard error is not evidence of kappa = 0 (see 
+> the strength of the instruments above).
+3. The joint law and the route
+   Hausman FIML vs two-step: p = 0.040   gamma contrast: p = 0.008   Hermite controls: p = 0.302
+   kappa two-step    .2102   FIML  -.05715   z of the difference  2.05
+   note 4: the Hausman contrast rejects (p = 0.040) with a clean link test and clean Hermite controls: the regime errors
+>  are not normal (A3); the likelihood is inconsistent and the two-step is not. Report the two-step estimates (method(tw
+> ostep)); a transformation of the outcome may remove the rejection.
+4. The effects
+   ATT =    1.098   ATU =    .7605   ATE =    .8311   (common support: ATT    1.099, ATU    .7604)
+   effect by quantile of P(Z), 5 groups: first      .85   last    .7986
+------------------------------------------------------------------------------
+Route to report: twostep   (4 notes above)
+------------------------------------------------------------------------------
+(reading sheet written to paper/reading_union3.txt)
+
+. 
+end of do-file

@@ -1,0 +1,16 @@
+esreg reading sheet
+outcome ln_wage; treatment union; method twostep; N 1210; treated 253
+x:  age grade smsa black tenure
+z:  south black tenure
+excluded: south
+lr_excl 25.65329457577241; p_excl 4.08597308197e-07; varP_share .4453480163676438; vif 2.156275897378253
+supp_lo .07249159; supp_hi .70147731; share_att_extrap .0079051383399209; share_atu_extrap .0031347962382445
+p_link .2625408501835694; p_gamma .0079003968850055; p_suff .; keep 
+kappa .2102074763376422; se_kappa .1523034833462988; rho1 -.8452949727770437; rho0 -1.169283978973771; kappa_dd .7820419800438212
+p_hausman .0402423334062222; p_hermite .3020031190213082
+att 1.09795893066945; atu .7605397749203467; ate .8310910529406139; att_cs 1.098521130672839; atu_cs .7604420488367892; eff_first .8499952076252503; eff_last .7985581493824343
+route twostep
+note1: a single excluded instrument: index sufficiency cannot be tested (the instrument tests itself, Section 4.2) and part of the identification is by form; a second instrument would make the exclusion testable.
+note2: only one within-group contrast is significant, C0 (untreated): rho0 sigma0 is negative; the other regime shows no selection on unobservables in the strata, and selection on gains (their difference) is not established without the parametric model.
+note3: kappa is not significantly different from zero: the ATT, ATU and ATE do not differ beyond sampling error; the model of a common effect is not rejected on this ground, but a wide standard error is not evidence of kappa = 0 (see the strength of the instruments above).
+note4: the Hausman contrast rejects (p = 0.040) with a clean link test and clean Hermite controls: the regime errors are not normal (A3); the likelihood is inconsistent and the two-step is not. Report the two-step estimates (method(twostep)); a transformation of the outcome may remove the rejection.

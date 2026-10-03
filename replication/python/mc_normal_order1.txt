@@ -1,0 +1,12 @@
+n=2000 N order=1: joint 0.045 reg1 0.055 reg0 0.050
+n=2000 N order=2: joint 0.065 reg1 0.060 reg0 0.065
+n=2000 C2 order=1: joint 0.085 reg1 0.080 reg0 0.055
+n=2000 C2 order=2: joint 0.065 reg1 0.075 reg0 0.075
+n=2000 C1 order=1: joint 0.535 reg1 0.675 reg0 0.065
+n=2000 C1 order=2: joint 0.600 reg1 0.710 reg0 0.080
+n=5000 N order=1: joint 0.075 reg1 0.090 reg0 0.055
+n=5000 N order=2: joint 0.070 reg1 0.070 reg0 0.065
+n=5000 C2 order=1: joint 0.050 reg1 0.090 reg0 0.045
+n=5000 C2 order=2: joint 0.085 reg1 0.075 reg0 0.055
+n=5000 C1 order=1: joint 0.945 reg1 0.980 reg0 0.050
+n=5000 C1 order=2: joint 0.935 reg1 0.980 reg0 0.080

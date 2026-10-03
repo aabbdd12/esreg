@@ -1,0 +1,435 @@
+------------------------------------------------------------------------------------------------------------------------
+      name:  rep
+       log:  logs/esrdiag_test.log
+  log type:  text
+ opened on:   3 Oct 2026, 08:38:40
+
+. do "tests/esrdiag_test.do"
+
+. * esrdiag_test.do -- diagnostics of the selection equation (Section 4.4) against the
+. * Python reference (esreg/diag.py).  Run from the project root:
+. *   tools\run_stata.bat tests\esrdiag_test.do
+. version 16
+
+. clear all
+
+. set more off
+
+. foreach f in esreg esreg_lf1 esreg_engine esreg_mata _esreg_getest _esreg_data _esreg_effects_post _esreg_esample _esr
+> eg_ifcov esreg_p esrdiag {
+  2.     cap confirm file "`f'.ado"
+  3.     if (_rc == 0) run "`f'.ado"
+  4.     else {
+  5.         cap confirm file "src/`f'.ado"
+  6.         if (_rc == 0) run "src/`f'.ado"
+  7.         else          run "../src/`f'.ado"
+  8.     }
+  9. }
+
+. 
+. * ---- esr_sim, FIML ---------------------------------------------------------------------
+. use "data/esr_sim.dta", clear
+(ESR simule -- parametres connus (voir .do compagnon))
+
+. esreg y x, select(d = x z) nolog
+
+
+Endogenous switching regression -- full information ML
+
+                                                       Number of obs =  20,000
+                                                       Wald chi2(1)  = 9842.16
+Log likelihood = -39940.291                            Prob > chi2   =  0.0000
+
+------------------------------------------------------------------------------
+           y | Coefficient  Std. err.      z    P>|z|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+y_1          |
+           x |   1.205903   .0121553    99.21   0.000     1.182079    1.229727
+       _cons |   .9831364   .0189707    51.82   0.000     .9459545    1.020318
+-------------+----------------------------------------------------------------
+y_0          |
+           x |   .3865108   .0109584    35.27   0.000     .3650327    .4079889
+       _cons |   .4803904   .0196117    24.50   0.000     .4419522    .5188286
+-------------+----------------------------------------------------------------
+d            |
+           x |    .292636   .0103871    28.17   0.000     .2722778    .3129943
+           z |   .9081516   .0128427    70.71   0.000     .8829804    .9333227
+       _cons |   .2042513   .0102002    20.02   0.000     .1842592    .2242433
+-------------+----------------------------------------------------------------
+lnsigma_1    |
+       _cons |   .2549285   .0083776    30.43   0.000     .2385086    .2713483
+-------------+----------------------------------------------------------------
+lnsigma_0    |
+       _cons |  -.0094671   .0082558    -1.15   0.251    -.0256482    .0067139
+-------------+----------------------------------------------------------------
+atanhrho_1   |
+       _cons |   .6991283   .0276441    25.29   0.000     .6449469    .7533097
+-------------+----------------------------------------------------------------
+atanhrho_0   |
+       _cons |  -.3238298   .0263308   -12.30   0.000    -.3754372   -.2722223
+------------------------------------------------------------------------------
+LR test of independent equations (rho1 = rho0 = 0): chi2(2) =   787.01   Prob > chi2 = 0.0000
+sigma_1 =  1.29037   sigma_0 =  .990578   rho_1 =  .603814   rho_0 = -.312966
+
+Treatment effects (std. err.: influence function of the whole procedure)
+----------------------------------------------------------------------------
+Index    |   Estimate   Std. err.        z    P>|z|     [95% conf. interval]
+---------+------------------------------------------------------------------
+     ATT |    1.17919    .0345787    34.10   0.000      1.11142     1.24696
+     ATU |   -.343526    .0389294    -8.82   0.000     -.419826    -.267225
+     ATE |    .508129    .0275039    18.47   0.000      .454222     .562035
+   kappa |    1.08916    .0373076    29.19   0.000      1.01604     1.16228
+----------------------------------------------------------------------------
+kappa = rho1*sigma1 - rho0*sigma0;  ATT - ATU = kappa*(mean lambda1 + mean lambda0)
+Variance of ATT: parameters   .00111 + sampling  .000058 + covariance  .000024 (by observation)
+Common support of P(Z): [0.0213, 0.9910]
+
+. esrdiag
+
+Diagnostics of the selection equation (fiml estimation of y on treatment d)
+----------------------------------------------------------------------------
+Fit of the selection equation (probit of d on the whole of Z)
+  log likelihood -10040.0332   intercept only -13721.9524
+  pseudo-R2 0.2683   LR chi2(2) =  7363.84   Prob > chi2 = 0.0000
+----------------------------------------------------------------------------
+Strength of the excluded instruments   z
+  LR test, with vs without them:  chi2(1) =  6816.98   Prob > chi2 = 0.0000
+  pseudo-R2 of the probit:  with 0.2683   without 0.0199   increment 0.2484
+  per instrument (Wald chi2(1) in the full probit):
+                         z    0.9133 ( 0.0130)   chi2 =  4931.49
+----------------------------------------------------------------------------
+Variation of the score beyond X
+  Var(P | X) / Var(P) = 0.9154   (share of the variance of P(Z) not explained by X)
+  VIF of lambda_1 on X among the treated   =     1.07
+  VIF of lambda_0 on X among the untreated =     1.06
+----------------------------------------------------------------------------
+Support of P(Z)
+  treated   [0.0213, 1.0000]           untreated [0.0002, 0.9910]
+  common support [0.0213, 0.9910]
+  share of the treated outside the untreated range (ATT extrapolated):   0.0241
+  share of the untreated outside the treated range (ATU extrapolated):   0.0242
+  ATT: full    1.1792   on the common support    1.1808
+  ATU: full   -.34353   on the common support   -.34765
+----------------------------------------------------------------------------
+no warning
+
+. di as txt _n "expected (Python): LR chi2(1) = 6816.98; pseudo-R2 .26832 / .01993 (incr .2484); z: chi2 4931.49"
+
+expected (Python): LR chi2(1) = 6816.98; pseudo-R2 .26832 / .01993 (incr .2484); z: chi2 4931.49
+
+. di as txt   "   Var(P|X)/Var(P) .91537; VIF 1.06695 / 1.05808; shares extrapolated .02414 / .02417"
+   Var(P|X)/Var(P) .91537; VIF 1.06695 / 1.05808; shares extrapolated .02414 / .02417
+
+. di as txt   "   ATT on common support 1.18076 (full 1.17919); ATU on common support -.34765 (full -.34353)"
+   ATT on common support 1.18076 (full 1.17919); ATU on common support -.34765 (full -.34353)
+
+. return list
+
+scalars:
+               r(form) =  0
+               r(weak) =  0
+             r(atu_cs) =  -.3476473880640792
+             r(att_cs) =  1.18075780039979
+                r(atu) =  -.3435257202961479
+                r(att) =  1.179189166424641
+          r(share_atu) =  .0241660993873383
+          r(share_att) =  .0241373145002682
+             r(p_max0) =  .9910000180381298
+             r(p_min0) =  .0001661676944743
+             r(p_max1) =  .9999600032753785
+             r(p_min1) =  .0212778615782618
+            r(supp_hi) =  .9910000180381298
+            r(supp_lo) =  .0212778615782618
+               r(vif0) =  1.05807804491467
+               r(vif1) =  1.06695188341589
+         r(varP_share) =  .9153708696867915
+             r(df_sel) =  2
+            r(ll0_sel) =  -13721.9523897321
+             r(ll_sel) =  -10040.03317553101
+            r(r2_incr) =  .2483968503149616
+           r(r2_restr) =  .0199264253842174
+            r(r2_full) =  .268323275699179
+             r(p_excl) =  0
+            r(df_excl) =  1
+            r(lr_excl) =  6816.979507562617
+
+macros:
+             r(method) : "fiml"
+           r(excluded) : "z"
+
+matrices:
+              r(instr) :  1 x 3
+
+. 
+. * ---- esr_suff, two-step, two instruments -------------------------------------------------
+. use "data/esr_suff.dta", clear
+(Two instruments, index sufficiency holds; n = 5000, seed 2026)
+
+. esreg y x, select(d = x z1 z2) method(twostep) nolog
+
+Endogenous switching regression -- two-step     Number of obs =      5000
+Outcome: y   Treatment: d                       Treated       =      2796
+Std. err.: exact variance of the two-step procedure (stacked moments)
+------------------------------------------------------------------------------
+           y | Coefficient  Std. err.      z    P>|z|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+d            |
+           x |    .299257   .0213885    13.99   0.000     .2573364    .3411777
+          z1 |   .7380411   .0239943    30.76   0.000     .6910131    .7850691
+          z2 |   .6163476   .0230372    26.75   0.000     .5711956    .6614997
+       _cons |   .2170493   .0205849    10.54   0.000     .1767036    .2573949
+-------------+----------------------------------------------------------------
+y_1          |
+           x |   1.222552    .023412    52.22   0.000     1.176665    1.268438
+      lambda |   .6579289   .0602768    10.92   0.000     .5397885    .7760692
+       _cons |    1.07555   .0405872    26.50   0.000     .9960009      1.1551
+-------------+----------------------------------------------------------------
+y_0          |
+           x |   .4328077   .0215824    20.05   0.000     .3905071    .4751084
+      lambda |  -.2149339   .0494524    -4.35   0.000    -.3118587    -.118009
+       _cons |   .5753598   .0391919    14.68   0.000     .4985451    .6521744
+------------------------------------------------------------------------------
+sigma_1 =  1.27981   sigma_0 =   .98923   rho_1 =  .514084   rho_0 = -.217274
+
+Treatment effects (std. err.: influence function of the whole procedure)
+----------------------------------------------------------------------------
+Index    |   Estimate   Std. err.        z    P>|z|     [95% conf. interval]
+---------+------------------------------------------------------------------
+     ATT |    1.04297    .0684497    15.24   0.000      .908813     1.17713
+     ATU |   -.201602    .0828231    -2.43   0.015     -.363932   -.0392718
+     ATE |    .494364    .0572183     8.64   0.000      .382218      .60651
+   kappa |    .872863    .0784977    11.12   0.000       .71901     1.02672
+----------------------------------------------------------------------------
+kappa = rho1*sigma1 - rho0*sigma0;  ATT - ATU = kappa*(mean lambda1 + mean lambda0)
+Variance of ATT: parameters    .0044 + sampling   .00022 + covariance  .000063 (by observation)
+Common support of P(Z): [0.0206, 0.9919]
+
+. esrdiag
+
+Diagnostics of the selection equation (twostep estimation of y on treatment d)
+----------------------------------------------------------------------------
+Fit of the selection equation (probit of d on the whole of Z)
+  log likelihood  -2478.4733   intercept only  -3430.6072
+  pseudo-R2 0.2775   LR chi2(3) =  1904.27   Prob > chi2 = 0.0000
+----------------------------------------------------------------------------
+Strength of the excluded instruments   z1 z2
+  LR test, with vs without them:  chi2(2) =  1775.85   Prob > chi2 = 0.0000
+  pseudo-R2 of the probit:  with 0.2775   without 0.0187   increment 0.2588
+  per instrument (Wald chi2(1) in the full probit):
+                        z1    0.7380 ( 0.0243)   chi2 =   924.39
+                        z2    0.6163 ( 0.0234)   chi2 =   692.28
+----------------------------------------------------------------------------
+Variation of the score beyond X
+  Var(P | X) / Var(P) = 0.9237   (share of the variance of P(Z) not explained by X)
+  VIF of lambda_1 on X among the treated   =     1.05
+  VIF of lambda_0 on X among the untreated =     1.07
+----------------------------------------------------------------------------
+Support of P(Z)
+  treated   [0.0206, 0.9999]           untreated [0.0004, 0.9919]
+  common support [0.0206, 0.9919]
+  share of the treated outside the untreated range (ATT extrapolated):   0.0247
+  share of the untreated outside the treated range (ATU extrapolated):   0.0281
+  ATT: full     1.043   on the common support    1.0452
+  ATU: full    -.2016   on the common support   -.20274
+----------------------------------------------------------------------------
+no warning
+
+. di as txt _n "expected (Python): LR chi2(2) = 1775.85; pseudo-R2 .27754 / .01872; z1 chi2 924.39, z2 chi2 692.28"
+
+expected (Python): LR chi2(2) = 1775.85; pseudo-R2 .27754 / .01872; z1 chi2 924.39, z2 chi2 692.28
+
+. di as txt   "   Var(P|X)/Var(P) .92373; VIF 1.04563 / 1.06642; shares .02468 / .02813; ATU on support -.20274 (full -.
+> 2016)"
+   Var(P|X)/Var(P) .92373; VIF 1.04563 / 1.06642; shares .02468 / .02813; ATU on support -.20274 (full -.2016)
+
+. 
+. * ---- esr_annex2 with a factor variable in the selection equation ------------------------------
+. use "data/esr_annex2.dta", clear
+(Exemple ESR compatible -- effet vrai = 2 (ATT=ATU=ATE))
+
+. esreg income educ, select(treatment = educ i.region inst) nolog
+
+
+Endogenous switching regression -- full information ML
+
+                                                       Number of obs =   5,000
+                                                       Wald chi2(1)  = 9364.86
+Log likelihood = -4229.3298                            Prob > chi2   =  0.0000
+
+------------------------------------------------------------------------------
+      income | Coefficient  Std. err.      z    P>|z|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+income_1     |
+        educ |   .5039501   .0052076    96.77   0.000     .4937434    .5141568
+       _cons |    62.8872    .018741  3355.60   0.000     62.85047    62.92393
+-------------+----------------------------------------------------------------
+income_0     |
+        educ |    .503302   .0073309    68.65   0.000     .4889337    .5176704
+       _cons |    60.9076    .029714  2049.79   0.000     60.84937    60.96584
+-------------+----------------------------------------------------------------
+treatment    |
+        educ |  -.0034487    .017057    -0.20   0.840    -.0368798    .0299824
+             |
+      region |
+          2  |   .2872394   .0470878     6.10   0.000      .194949    .3795297
+          3  |   .3312872   .0441748     7.50   0.000     .2447062    .4178683
+             |
+        inst |   .7008037   .0231935    30.22   0.000     .6553452    .7462622
+       _cons |   .3195646   .0613857     5.21   0.000     .1992509    .4398784
+-------------+----------------------------------------------------------------
+lnsigma_1    |
+       _cons |  -1.031078   .0164339   -62.74   0.000    -1.063288   -.9988683
+-------------+----------------------------------------------------------------
+lnsigma_0    |
+       _cons |  -1.004442   .0234157   -42.90   0.000    -1.050336   -.9585478
+-------------+----------------------------------------------------------------
+atanhrho_1   |
+       _cons |   .5907883   .0621601     9.50   0.000     .4689568    .7126198
+-------------+----------------------------------------------------------------
+atanhrho_0   |
+       _cons |   .5748916   .0631184     9.11   0.000     .4511818    .6986013
+------------------------------------------------------------------------------
+LR test of independent equations (rho1 = rho0 = 0): chi2(2) =   172.38   Prob > chi2 = 0.0000
+sigma_1 =  .356622   sigma_0 =  .366249   rho_1 =  .530462   rho_0 =  .518943
+
+Treatment effects (std. err.: influence function of the whole procedure)
+----------------------------------------------------------------------------
+Index    |   Estimate   Std. err.        z    P>|z|     [95% conf. interval]
+---------+------------------------------------------------------------------
+     ATT |    1.98115    .0291972    67.85   0.000      1.92393     2.03838
+     ATU |    1.98233    .0267541    74.09   0.000      1.92989     2.03477
+     ATE |    1.98155    .0230847    85.84   0.000       1.9363     2.02679
+   kappa |-.000887549      .02634    -0.03   0.973    -.0525129    .0507378
+----------------------------------------------------------------------------
+kappa = rho1*sigma1 - rho0*sigma0;  ATT - ATU = kappa*(mean lambda1 + mean lambda0)
+Variance of ATT: parameters  .000852 + sampling  1.9e-10 + covariance  4.0e-08 (by observation)
+Common support of P(Z): [0.0421, 0.9754]
+
+. esrdiag
+
+Diagnostics of the selection equation (fiml estimation of income on treatment treatment)
+----------------------------------------------------------------------------
+Fit of the selection equation (probit of treatment on the whole of Z)
+  log likelihood  -2621.5276   intercept only  -3184.8763
+  pseudo-R2 0.1769   LR chi2(4) =  1126.70   Prob > chi2 = 0.0000
+----------------------------------------------------------------------------
+Strength of the excluded instruments   2.region 3.region inst
+  LR test, with vs without them:  chi2(3) =  1126.64   Prob > chi2 = 0.0000
+  pseudo-R2 of the probit:  with 0.1769   without 0.0000   increment 0.1769
+  per instrument (Wald chi2(1) in the full probit):
+                  2.region    0.3258 ( 0.0511)   chi2 =    40.64
+                  3.region    0.3610 ( 0.0478)   chi2 =    57.05
+                      inst    0.6972 ( 0.0234)   chi2 =   887.55
+----------------------------------------------------------------------------
+Variation of the score beyond X
+  Var(P | X) / Var(P) = 0.9998   (share of the variance of P(Z) not explained by X)
+  VIF of lambda_1 on X among the treated   =     1.00
+  VIF of lambda_0 on X among the untreated =     1.00
+----------------------------------------------------------------------------
+Support of P(Z)
+  treated   [0.0421, 0.9979]           untreated [0.0198, 0.9754]
+  common support [0.0421, 0.9754]
+  share of the treated outside the untreated range (ATT extrapolated):   0.0333
+  share of the untreated outside the treated range (ATU extrapolated):   0.0012
+  ATT: full    1.9812   on the common support    1.9811
+  ATU: full    1.9823   on the common support    1.9823
+----------------------------------------------------------------------------
+no warning
+
+. di as txt _n "expected (Python, region dummies): LR chi2(3) = 1126.64; pseudo-R2 .17688 / .00001;"
+
+expected (Python, region dummies): LR chi2(3) = 1126.64; pseudo-R2 .17688 / .00001;
+
+. di as txt   "   2.region chi2 40.64, 3.region 57.05, inst 887.55; Var(P|X)/Var(P) .99979; VIF 1.00027 / 1.00001;"
+   2.region chi2 40.64, 3.region 57.05, inst 887.55; Var(P|X)/Var(P) .99979; VIF 1.00027 / 1.00001;
+
+. di as txt   "   shares .03333 / .0012; ATT on support 1.98114"
+   shares .03333 / .0012; ATT on support 1.98114
+
+. 
+. * ---- a weak instrument: the warnings ------------------------------------------------------------
+. use "data/esr_sim.dta", clear
+(ESR simule -- parametres connus (voir .do compagnon))
+
+. set seed 2026
+
+. gen double noise = rnormal()
+
+. esreg y x, select(d = x noise) method(twostep) nolog
+
+Endogenous switching regression -- two-step     Number of obs =     20000
+Outcome: y   Treatment: d                       Treated       =     11186
+Std. err.: exact variance of the two-step procedure (stacked moments)
+------------------------------------------------------------------------------
+           y | Coefficient  Std. err.      z    P>|z|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+d            |
+           x |   .2122696   .0091761    23.13   0.000     .1942848    .2302544
+       noise |  -.0031065   .0089309    -0.35   0.728    -.0206107    .0143977
+       _cons |   .1509772   .0089712    16.83   0.000     .1333941    .1685604
+-------------+----------------------------------------------------------------
+y_1          |
+           x |    1.15549   .1888579     6.12   0.000     .7853356    1.525645
+      lambda |   .1862531   1.498201     0.12   0.901    -2.750167    3.122673
+       _cons |   1.257801   1.062879     1.18   0.237    -.8254042    3.341007
+-------------+----------------------------------------------------------------
+y_0          |
+           x |   .3600512   .2984451     1.21   0.228    -.2248905    .9449928
+      lambda |  -.4109557   2.130078    -0.19   0.847    -4.585832    3.763921
+       _cons |    .315493   1.918435     0.16   0.869    -3.444571    4.075557
+------------------------------------------------------------------------------
+sigma_1 =  1.22082   sigma_0 =  1.02874   rho_1 =  .152564   rho_0 = -.399473
+
+Treatment effects (std. err.: influence function of the whole procedure)
+----------------------------------------------------------------------------
+Index    |   Estimate   Std. err.        z    P>|z|     [95% conf. interval]
+---------+------------------------------------------------------------------
+     ATT |    1.47575     3.43405     0.43   0.667     -5.25487     8.20636
+     ATU |    .278758     2.40837     0.12   0.908     -4.44156     4.99907
+     ATE |    .948233     2.32009     0.41   0.683     -3.59905     5.49552
+   kappa |    .597209     2.42765     0.25   0.806     -4.16089     5.35531
+----------------------------------------------------------------------------
+kappa = rho1*sigma1 - rho0*sigma0;  ATT - ATU = kappa*(mean lambda1 + mean lambda0)
+Variance of ATT: parameters     11.8 + sampling  .000045 + covariance  .000166 (by observation)
+Common support of P(Z): [0.2445, 0.8145]
+
+. esrdiag
+
+Diagnostics of the selection equation (twostep estimation of y on treatment d)
+----------------------------------------------------------------------------
+Fit of the selection equation (probit of d on the whole of Z)
+  log likelihood -13448.4626   intercept only -13721.9524
+  pseudo-R2 0.0199   LR chi2(2) =   546.98   Prob > chi2 = 0.0000
+----------------------------------------------------------------------------
+Strength of the excluded instruments   noise
+  LR test, with vs without them:  chi2(1) =     0.12   Prob > chi2 = 0.7283
+  pseudo-R2 of the probit:  with 0.0199   without 0.0199   increment 0.0000
+  per instrument (Wald chi2(1) in the full probit):
+                     noise   -0.0031 ( 0.0089)   chi2 =     0.12
+----------------------------------------------------------------------------
+Variation of the score beyond X
+  Var(P | X) / Var(P) = 0.0010   (share of the variance of P(Z) not explained by X)
+  VIF of lambda_1 on X among the treated   =   269.58
+  VIF of lambda_0 on X among the untreated =   429.80
+----------------------------------------------------------------------------
+Support of P(Z)
+  treated   [0.2445, 0.8265]           untreated [0.2373, 0.8145]
+  common support [0.2445, 0.8145]
+  share of the treated outside the untreated range (ATT extrapolated):   0.0004
+  share of the untreated outside the treated range (ATU extrapolated):   0.0001
+  ATT: full    1.4757   on the common support    1.4748
+  ATU: full    .27876   on the common support    .27908
+----------------------------------------------------------------------------
+warning: weak instruments (LR chi2 < 10); the effects and kappa will be imprecise
+warning: the Mills ratio is nearly collinear with X (VIF > 10): identification rests
+         on the curvature of lambda alone (identification by form)
+
+. di as txt _n "expected: LR chi2(1) close to 0, VIF of lambda in the tens or more, both warnings printed"
+
+expected: LR chi2(1) close to 0, VIF of lambda in the tens or more, both warnings printed
+
+. di as txt "e(cmd) after esrdiag: `e(cmd)'   e(att) = " e(att) "   (the user's estimation is kept)"
+e(cmd) after esrdiag: esreg   e(att) = 1.4757452   (the user's estimation is kept)
+
+. 
+end of do-file

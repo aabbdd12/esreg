@@ -1,0 +1,1977 @@
+------------------------------------------------------------------------------------------------------------------------
+      name:  rep
+       log:  logs/esrtest_test.log
+  log type:  text
+ opened on:   3 Oct 2026, 08:37:24
+
+. do "tests/esrtest_test.do"
+
+. * esrtest_test.do -- esrtest, kappa (constant selection on gains) against the
+. * Python reference on data/esr_kx.dta (design K: kappa(x) = 1.08 + 0.4 x, n = 5000).
+. * Run from the project root: tools\run_stata.bat tests\esrtest_test.do
+. version 16
+
+. clear all
+
+. set more off
+
+. foreach f in esreg esreg_lf1 esreg_engine esreg_mata _esreg_getest _esreg_data _esreg_effects_post _esreg_esample _esr
+> eg_ifcov esreg_p esrtest {
+  2.     cap confirm file "`f'.ado"
+  3.     if (_rc == 0) run "`f'.ado"
+  4.     else {
+  5.         cap confirm file "src/`f'.ado"
+  6.         if (_rc == 0) run "src/`f'.ado"
+  7.         else          run "../src/`f'.ado"
+  8.     }
+  9. }
+
+. 
+. use "data/esr_kx.dta", clear
+(Design K: kappa(x) = 1.08 + 0.4x, n = 5000, seed 2026)
+
+. summarize kappa_true
+
+    Variable |        Obs        Mean    Std. dev.       Min        Max
+-------------+---------------------------------------------------------
+  kappa_true |      5,000    1.077049    .4016922  -.4189655    2.52838
+
+. 
+. * ---- two-step with kappa(x) --------------------------------------------------------
+. esreg y x, select(d = x z) method(twostep) kappa(x)
+
+Endogenous switching regression -- two-step     Number of obs =      5000
+Outcome: y   Treatment: d                       Treated       =      2781
+Std. err.: exact variance of the two-step procedure (stacked moments)
+------------------------------------------------------------------------------
+           y | Coefficient  Std. err.      z    P>|z|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+d            |
+           x |   .2803518   .0202393    13.85   0.000     .2406836    .3200201
+           z |    .871025    .025034    34.79   0.000     .8219592    .9200907
+       _cons |   .1870484   .0202777     9.22   0.000     .1473048     .226792
+-------------+----------------------------------------------------------------
+y_1          |
+           x |    1.16936   .0480121    24.36   0.000     1.075258    1.263462
+    lambda_x |   .3682706   .0700732     5.26   0.000     .2309296    .5056116
+      lambda |   .7756906   .0645897    12.01   0.000     .6490971     .902284
+       _cons |   1.007688   .0427462    23.57   0.000     .9239069    1.091469
+-------------+----------------------------------------------------------------
+y_0          |
+           x |   .3840363   .0379343    10.12   0.000     .3096863    .4583862
+    lambda_x |  -.0639327   .0495426    -1.29   0.197    -.1610344     .033169
+      lambda |  -.2668958   .0503117    -5.30   0.000    -.3655049   -.1682868
+       _cons |    .517259   .0405465    12.76   0.000     .4377893    .5967287
+------------------------------------------------------------------------------
+sigma_1 =  1.39451   sigma_0 =  .976651   rho_1 =  .590353   rho_0 = -.261592
+
+Treatment effects (std. err.: influence function of the whole procedure)
+----------------------------------------------------------------------------
+Index    |   Estimate   Std. err.        z    P>|z|     [95% conf. interval]
+---------+------------------------------------------------------------------
+     ATT |    1.13062    .0729251    15.50   0.000      .987687     1.27355
+     ATU |   -.324953    .0871114    -3.73   0.000     -.495689    -.154218
+     ATE |    .484635    .0595292     8.14   0.000       .36796      .60131
+   kappa |     1.0394    .0824021    12.61   0.000      .877893      1.2009
+----------------------------------------------------------------------------
+kappa = rho1*sigma1 - rho0*sigma0;  ATT - ATU = kappa*(mean lambda1 + mean lambda0)
+Variance of ATT: parameters   .00488 + sampling   .00037 + covariance   .00007 (by observation)
+Common support of P(Z): [0.0505, 0.9734]
+
+. di as txt _n "expected (Python): y_1: x 1.16936 lambda_x .368271 (.0700732) lambda .775691 (.0645897) _cons 1.00769"
+
+expected (Python): y_1: x 1.16936 lambda_x .368271 (.0700732) lambda .775691 (.0645897) _cons 1.00769
+
+. di as txt   "                   y_0: x .384036 lambda_x -.0639327 (.0495426) lambda -.266896 (.0503117) _cons .517259"
+                   y_0: x .384036 lambda_x -.0639327 (.0495426) lambda -.266896 (.0503117) _cons .517259
+
+. di as txt   "                   ATT 1.13062 (.0724412) ATU -.324953 (.0856042) kappa 1.0394 (.0821178)"
+                   ATT 1.13062 (.0724412) ATU -.324953 (.0856042) kappa 1.0394 (.0821178)
+
+. esrtest, kappa
+
+Test of constant selection on gains:  H0: kappa(x) = kappa
+(two-step estimation, kappa(x) = W(t1 - t0); Wald on the non-constant entries of t1 - t0)
+--------------------------------------------------------------------
+  d kappa / d w        |      Coef.   Std. err.        z    P>|z|
+------------------------+-------------------------------------------
+                     x  |      .4322     .085982     5.03    0.000
+--------------------------------------------------------------------
+  Wald chi2(1) =    25.27     Prob > chi2 = 0.0000
+  kappa at the sample mean (esreg):   1.0394 (s.e.   .0824)
+
+. di as txt _n "expected (Python): slope .43220 (.08598), chi2(1) = 25.27, p = 5.0e-07"
+
+expected (Python): slope .43220 (.08598), chi2(1) = 25.27, p = 5.0e-07
+
+. predict kx, kappa
+
+. summarize kx kappa_true
+
+    Variable |        Obs        Mean    Std. dev.       Min        Max
+-------------+---------------------------------------------------------
+          kx |      5,000    1.039398    .4340317  -.5770583   2.607574
+  kappa_true |      5,000    1.077049    .4016922  -.4189655    2.52838
+
+. correlate kx kappa_true
+(obs=5,000)
+
+             |       kx kappa_~e
+-------------+------------------
+          kx |   1.0000
+  kappa_true |   1.0000   1.0000
+
+
+. 
+. * ---- FIML with hetsigma(x) hetrho(x) ---------------------------------------------------
+. esreg y x, select(d = x z) hetsigma(x) hetrho(x) nolog
+
+
+Endogenous switching regression -- full information ML
+
+                                                       Number of obs =   5,000
+                                                       Wald chi2(1)  = 1141.58
+Log likelihood = -10151.028                            Prob > chi2   =  0.0000
+
+------------------------------------------------------------------------------
+           y | Coefficient  Std. err.      z    P>|z|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+y_1          |
+           x |   1.189639   .0352096    33.79   0.000      1.12063    1.258649
+       _cons |   .9791612   .0392442    24.95   0.000     .9022439    1.056078
+-------------+----------------------------------------------------------------
+y_0          |
+           x |   .3713601   .0406474     9.14   0.000     .2916928    .4510275
+       _cons |   .5082306   .0409655    12.41   0.000     .4279398    .5885215
+-------------+----------------------------------------------------------------
+d            |
+           x |   .2799665   .0200697    13.95   0.000     .2406307    .3193023
+           z |   .8598134   .0246316    34.91   0.000     .8115364    .9080904
+       _cons |   .1874826   .0201031     9.33   0.000     .1480813    .2268839
+-------------+----------------------------------------------------------------
+lnsigma_1    |
+           x |    .161898   .0141098    11.47   0.000     .1342434    .1895526
+       _cons |   .2892495    .016494    17.54   0.000     .2569219     .321577
+-------------+----------------------------------------------------------------
+lnsigma_0    |
+           x |   .0131258   .0169904     0.77   0.440    -.0201746    .0464263
+       _cons |  -.0199884   .0168099    -1.19   0.234    -.0529352    .0129584
+-------------+----------------------------------------------------------------
+atanhrho_1   |
+           x |   .2627447   .0494046     5.32   0.000     .1659136    .3595758
+       _cons |   .7056044   .0558264    12.64   0.000     .5961867    .8150222
+-------------+----------------------------------------------------------------
+atanhrho_0   |
+           x |  -.0870503   .0585534    -1.49   0.137    -.2018129    .0277122
+       _cons |  -.2909134   .0543912    -5.35   0.000    -.3975182   -.1843085
+------------------------------------------------------------------------------
+LR test of independent equations (rho1 = rho0 = 0): chi2(4) =   316.64   Prob > chi2 = 0.0000
+sigma_1 =  1.35154   sigma_0 =    .9802   rho_1 =  .581618   rho_0 = -.280431   (means; heterogeneous)
+
+Treatment effects (std. err.: influence function of the whole procedure)
+----------------------------------------------------------------------------
+Index    |   Estimate   Std. err.        z    P>|z|     [95% conf. interval]
+---------+------------------------------------------------------------------
+     ATT |    1.14599    .0739784    15.49   0.000      1.00099     1.29098
+     ATU |   -.390394    .0783313    -4.98   0.000      -.54392    -.236867
+     ATE |    .464142    .0571152     8.13   0.000      .352198     .576085
+   kappa |     1.0979    .0763243    14.38   0.000      .948311      1.2475
+----------------------------------------------------------------------------
+kappa = rho1*sigma1 - rho0*sigma0;  ATT - ATU = kappa*(mean lambda1 + mean lambda0)
+Variance of ATT: parameters     .005 + sampling  .000392 + covariance  .000081 (by observation)
+Common support of P(Z): [0.0531, 0.9724]
+
+. di as txt _n "expected (Python): ll -10151.0278; lnsigma_1: x .161898 (.0141098); lnsigma_0: x .0131259 (.0169904)"
+
+expected (Python): ll -10151.0278; lnsigma_1: x .161898 (.0141098); lnsigma_0: x .0131259 (.0169904)
+
+. di as txt   "                   atanhrho_1: x .262743 (.0494046); atanhrho_0: x -.0870503 (.0585534)"
+                   atanhrho_1: x .262743 (.0494046); atanhrho_0: x -.0870503 (.0585534)
+
+. di as txt   "                   ATT 1.14599 (.0734285) ATU -.390395 (.0767194) kappa 1.0979 (.0760317)"
+                   ATT 1.14599 (.0734285) ATU -.390395 (.0767194) kappa 1.0979 (.0760317)
+
+. esrtest, kappa
+
+Test of constant selection on gains:  H0: kappa(x) = kappa
+(fiml estimation; Wald that the non-constant coefficients of ln sigma_j and atanh rho_j are zero:
+ homogeneous regime laws, a sufficient condition for kappa(x) constant)
+  Wald chi2(4) =   133.94     Prob > chi2 = 0.0000
+  kappa at the sample mean (esreg):   1.0979 (s.e.  .07632)
+
+. di as txt _n "expected (Python): chi2(4) = 133.94"
+
+expected (Python): chi2(4) = 133.94
+
+. predict kx2, kappa
+
+. correlate kx kx2 kappa_true
+(obs=5,000)
+
+             |       kx      kx2 kappa_~e
+-------------+---------------------------
+          kx |   1.0000
+         kx2 |   0.9990   1.0000
+  kappa_true |   1.0000   0.9990   1.0000
+
+
+. 
+. * ---- constant-kappa estimations refuse the test with a clear message ----------------------
+. esreg y x, select(d = x z) method(twostep)
+
+Endogenous switching regression -- two-step     Number of obs =      5000
+Outcome: y   Treatment: d                       Treated       =      2781
+Std. err.: exact variance of the two-step procedure (stacked moments)
+------------------------------------------------------------------------------
+           y | Coefficient  Std. err.      z    P>|z|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+d            |
+           x |   .2803518   .0202393    13.85   0.000     .2406836    .3200201
+           z |    .871025    .025034    34.79   0.000     .8219592    .9200907
+       _cons |   .1870484   .0202777     9.22   0.000     .1473048     .226792
+-------------+----------------------------------------------------------------
+y_1          |
+           x |   1.358241   .0267096    50.85   0.000     1.305891    1.410591
+      lambda |   .7900301   .0654371    12.07   0.000     .6617758    .9182843
+       _cons |   .9718057   .0439989    22.09   0.000     .8855695    1.058042
+-------------+----------------------------------------------------------------
+y_0          |
+           x |   .4247968   .0208623    20.36   0.000     .3839073    .4656862
+      lambda |  -.2641517   .0505883    -5.22   0.000    -.3633029   -.1650006
+       _cons |   .5254545   .0402499    13.05   0.000     .4465662    .6043427
+------------------------------------------------------------------------------
+sigma_1 =  1.37882   sigma_0 =  .976363   rho_1 =  .572976   rho_0 = -.270547
+
+Treatment effects (std. err.: influence function of the whole procedure)
+----------------------------------------------------------------------------
+Index    |   Estimate   Std. err.        z    P>|z|     [95% conf. interval]
+---------+------------------------------------------------------------------
+     ATT |    1.11642    .0724168    15.42   0.000      .974489     1.25836
+     ATU |   -.408946     .090311    -4.53   0.000     -.585952    -.231939
+     ATE |    .439465    .0602342     7.30   0.000      .321408     .557521
+   kappa |    1.05418     .083176    12.67   0.000       .89116      1.2172
+----------------------------------------------------------------------------
+kappa = rho1*sigma1 - rho0*sigma0;  ATT - ATU = kappa*(mean lambda1 + mean lambda0)
+Variance of ATT: parameters   .00483 + sampling  .000314 + covariance  .000101 (by observation)
+Common support of P(Z): [0.0505, 0.9734]
+
+. cap noisily esrtest, kappa
+
+Test of constant selection on gains:  H0: kappa(x) = kappa
+the estimation has no kappa() variables: re-estimate with esreg ..., method(twostep) kappa(varlist)
+
+. esreg y x, select(d = x z) nolog
+
+
+Endogenous switching regression -- full information ML
+
+                                                       Number of obs =   5,000
+                                                       Wald chi2(1)  = 2843.39
+Log likelihood = -10209.325                            Prob > chi2   =  0.0000
+
+------------------------------------------------------------------------------
+           y | Coefficient  Std. err.      z    P>|z|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+y_1          |
+           x |    1.36944   .0256817    53.32   0.000     1.319105    1.419775
+       _cons |   .9013609   .0417953    21.57   0.000     .8194436    .9832781
+-------------+----------------------------------------------------------------
+y_0          |
+           x |   .4238673   .0216725    19.56   0.000       .38139    .4663446
+       _cons |   .5174414   .0407079    12.71   0.000     .4376553    .5972275
+-------------+----------------------------------------------------------------
+d            |
+           x |   .2776453   .0201336    13.79   0.000     .2381842    .3171063
+           z |   .8521782   .0249649    34.14   0.000     .8032478    .9011085
+       _cons |   .1884429   .0200961     9.38   0.000     .1490553    .2278306
+-------------+----------------------------------------------------------------
+lnsigma_1    |
+       _cons |   .3401742   .0174791    19.46   0.000     .3059158    .3744325
+-------------+----------------------------------------------------------------
+lnsigma_0    |
+       _cons |  -.0225104   .0163756    -1.37   0.169     -.054606    .0095852
+-------------+----------------------------------------------------------------
+atanhrho_1   |
+       _cons |   .7793861   .0582036    13.39   0.000     .6653092     .893463
+-------------+----------------------------------------------------------------
+atanhrho_0   |
+       _cons |  -.2884428   .0547248    -5.27   0.000    -.3957013   -.1811842
+------------------------------------------------------------------------------
+LR test of independent equations (rho1 = rho0 = 0): chi2(2) =   200.04   Prob > chi2 = 0.0000
+sigma_1 =  1.40519   sigma_0 =  .977741   rho_1 =  .652354   rho_0 = -.280701
+
+Treatment effects (std. err.: influence function of the whole procedure)
+----------------------------------------------------------------------------
+Index    |   Estimate   Std. err.        z    P>|z|     [95% conf. interval]
+---------+------------------------------------------------------------------
+     ATT |    1.12778    .0733756    15.37   0.000      .983967     1.27159
+     ATU |   -.567695    .0863127    -6.58   0.000     -.736865    -.398526
+     ATE |    .375328    .0582987     6.44   0.000      .261065     .489592
+   kappa |    1.19114    .0795334    14.98   0.000      1.03525     1.34702
+----------------------------------------------------------------------------
+kappa = rho1*sigma1 - rho0*sigma0;  ATT - ATU = kappa*(mean lambda1 + mean lambda0)
+Variance of ATT: parameters   .00494 + sampling  .000326 + covariance  .000115 (by observation)
+Common support of P(Z): [0.0549, 0.9715]
+
+. cap noisily esrtest, kappa
+
+Test of constant selection on gains:  H0: kappa(x) = kappa
+the estimation has no hetsigma()/hetrho() variables: re-estimate with esreg ..., hetsigma(varlist) hetrho(varlist)
+
+. 
+. * =====================================================================================
+. * esrtest, suff  (index sufficiency, Section 4.2) against the Python reference
+. * =====================================================================================
+. foreach f in esrtest {
+  2.     cap confirm file "`f'.ado"
+  3.     if (_rc == 0) run "`f'.ado"
+  4.     else {
+  5.         cap confirm file "src/`f'.ado"
+  6.         if (_rc == 0) run "src/`f'.ado"
+  7.         else          run "../src/`f'.ado"
+  8.     }
+  9. }
+
+. * ---- sufficiency holds (two instruments, z1 kept, z2 tested) -------------------------
+. use "data/esr_suff.dta", clear
+(Two instruments, index sufficiency holds; n = 5000, seed 2026)
+
+. esreg y x, select(d = x z1 z2) method(twostep) nolog
+
+Endogenous switching regression -- two-step     Number of obs =      5000
+Outcome: y   Treatment: d                       Treated       =      2796
+Std. err.: exact variance of the two-step procedure (stacked moments)
+------------------------------------------------------------------------------
+           y | Coefficient  Std. err.      z    P>|z|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+d            |
+           x |    .299257   .0213885    13.99   0.000     .2573364    .3411777
+          z1 |   .7380411   .0239943    30.76   0.000     .6910131    .7850691
+          z2 |   .6163476   .0230372    26.75   0.000     .5711956    .6614997
+       _cons |   .2170493   .0205849    10.54   0.000     .1767036    .2573949
+-------------+----------------------------------------------------------------
+y_1          |
+           x |   1.222552    .023412    52.22   0.000     1.176665    1.268438
+      lambda |   .6579289   .0602768    10.92   0.000     .5397885    .7760692
+       _cons |    1.07555   .0405872    26.50   0.000     .9960009      1.1551
+-------------+----------------------------------------------------------------
+y_0          |
+           x |   .4328077   .0215824    20.05   0.000     .3905071    .4751084
+      lambda |  -.2149339   .0494524    -4.35   0.000    -.3118587    -.118009
+       _cons |   .5753598   .0391919    14.68   0.000     .4985451    .6521744
+------------------------------------------------------------------------------
+sigma_1 =  1.27981   sigma_0 =   .98923   rho_1 =  .514084   rho_0 = -.217274
+
+Treatment effects (std. err.: influence function of the whole procedure)
+----------------------------------------------------------------------------
+Index    |   Estimate   Std. err.        z    P>|z|     [95% conf. interval]
+---------+------------------------------------------------------------------
+     ATT |    1.04297    .0684497    15.24   0.000      .908813     1.17713
+     ATU |   -.201602    .0828231    -2.43   0.015     -.363932   -.0392718
+     ATE |    .494364    .0572183     8.64   0.000      .382218      .60651
+   kappa |    .872863    .0784977    11.12   0.000       .71901     1.02672
+----------------------------------------------------------------------------
+kappa = rho1*sigma1 - rho0*sigma0;  ATT - ATU = kappa*(mean lambda1 + mean lambda0)
+Variance of ATT: parameters    .0044 + sampling   .00022 + covariance  .000063 (by observation)
+Common support of P(Z): [0.0206, 0.9919]
+
+. esrtest, suff
+
+Test of index sufficiency:  H0: E[omega_j | X, Z, u] = E[omega_j | X, u]
+(two-step re-estimation with z2 added to both regime equations; kept excluded: z1)
+--------------------------------------------------------------------
+  added instrument      |      Coef.   Std. err.        z    P>|z|
+------------------------+-------------------------------------------
+  regime 1 (y_1)
+                    z2  |   .0018906     .029822     0.06    0.949
+  regime 0 (y_0)
+                    z2  |    .028374     .026443     1.07    0.283
+--------------------------------------------------------------------
+  joint      Wald chi2(2) =     1.16   Prob > chi2 = 0.5597
+  regime 1   Wald chi2(1) =     0.00   Prob > chi2 = 0.9494
+  regime 0   Wald chi2(1) =     1.15   Prob > chi2 = 0.2833
+A rejection says that the added instrument(s) carry information on the regime errors beyond the
+selection index: a direct effect on the outcome (exclusion) or a second index in participation.
+
+. di as txt _n "expected (Python): keep z1, tested z2; coef .00189 (.02982) regime 1, .02837 (.02644) regime 0;"
+
+expected (Python): keep z1, tested z2; coef .00189 (.02982) regime 1, .02837 (.02644) regime 0;
+
+. di as txt   "                   joint chi2(2) = 1.16 (p .560), regime 1 chi2(1) = 0.00, regime 0 chi2(1) = 1.15"
+                   joint chi2(2) = 1.16 (p .560), regime 1 chi2(1) = 0.00, regime 0 chi2(1) = 1.15
+
+. return list
+
+scalars:
+                r(p_0) =  .2832690995005764
+               r(df_0) =  1
+             r(chi2_0) =  1.151338645523578
+                r(p_1) =  .9494493255442648
+               r(df_1) =  1
+             r(chi2_1) =  .0040193468933858
+                  r(p) =  .5596823742029635
+                 r(df) =  2
+               r(chi2) =  1.160771690177415
+
+macros:
+               r(test) : "suff"
+             r(tested) : "z2"
+               r(keep) : "z1"
+
+matrices:
+              r(coefs) :  2 x 4
+
+. * the choice of the kept instrument can be forced
+. esrtest, suff keep(z2)
+
+Test of index sufficiency:  H0: E[omega_j | X, Z, u] = E[omega_j | X, u]
+(two-step re-estimation with z1 added to both regime equations; kept excluded: z2)
+--------------------------------------------------------------------
+  added instrument      |      Coef.   Std. err.        z    P>|z|
+------------------------+-------------------------------------------
+  regime 1 (y_1)
+                    z1  |   -.010932      .03591    -0.30    0.761
+  regime 0 (y_0)
+                    z1  |  -.0083733     .031204    -0.27    0.788
+--------------------------------------------------------------------
+  joint      Wald chi2(2) =     0.17   Prob > chi2 = 0.9187
+  regime 1   Wald chi2(1) =     0.09   Prob > chi2 = 0.7608
+  regime 0   Wald chi2(1) =     0.07   Prob > chi2 = 0.7884
+A rejection says that the added instrument(s) carry information on the regime errors beyond the
+selection index: a direct effect on the outcome (exclusion) or a second index in participation.
+
+. * ---- double hurdle: a second index in participation ---------------------------------------
+. use "data/esr_dh.dta", clear
+(Double hurdle: D = 1{.3+.3x+.9z1+e1>0 & .6+.3x+.9z2+e2>0}, omega ~ e1; n = 5000,)
+
+. esreg y x, select(d = x z1 z2) method(twostep) nolog
+
+Endogenous switching regression -- two-step     Number of obs =      5000
+Outcome: y   Treatment: d                       Treated       =      2007
+Std. err.: exact variance of the two-step procedure (stacked moments)
+------------------------------------------------------------------------------
+           y | Coefficient  Std. err.      z    P>|z|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+d            |
+           x |   .3789216   .0211763    17.89   0.000     .3374169    .4204264
+          z1 |   .5974553    .022257    26.84   0.000     .5538324    .6410781
+          z2 |   .4863119   .0217018    22.41   0.000     .4437771    .5288468
+       _cons |  -.3237597   .0202381   -16.00   0.000    -.3634256   -.2840938
+-------------+----------------------------------------------------------------
+y_1          |
+           x |   1.262531   .0302706    41.71   0.000     1.203202     1.32186
+      lambda |   .5056589   .0739286     6.84   0.000     .3607615    .6505562
+       _cons |   .9511588   .0651187    14.61   0.000     .8235285    1.078789
+-------------+----------------------------------------------------------------
+y_0          |
+           x |   .4152859   .0206618    20.10   0.000     .3747896    .4557822
+      lambda |  -.1625515   .0577123    -2.82   0.005    -.2756654   -.0494375
+       _cons |   .5312198   .0355858    14.93   0.000     .4614729    .6009666
+------------------------------------------------------------------------------
+sigma_1 =  1.29283   sigma_0 =  .999564   rho_1 =  .391124   rho_0 = -.162622
+
+Treatment effects (std. err.: influence function of the whole procedure)
+----------------------------------------------------------------------------
+Index    |   Estimate   Std. err.        z    P>|z|     [95% conf. interval]
+---------+------------------------------------------------------------------
+     ATT |     1.1318    .0850224    13.31   0.000      .965156     1.29844
+     ATU |  -.0678499     .104696    -0.65   0.517     -.273051     .137351
+     ATE |    .413688    .0756225     5.47   0.000      .265471     .561906
+   kappa |     .66821    .0934588     7.15   0.000      .485034     .851386
+----------------------------------------------------------------------------
+kappa = rho1*sigma1 - rho0*sigma0;  ATT - ATU = kappa*(mean lambda1 + mean lambda0)
+Variance of ATT: parameters   .00684 + sampling  .000304 + covariance  .000088 (by observation)
+Common support of P(Z): [0.0274, 0.9805]
+
+. esrtest, suff
+
+Test of index sufficiency:  H0: E[omega_j | X, Z, u] = E[omega_j | X, u]
+(two-step re-estimation with z2 added to both regime equations; kept excluded: z1)
+--------------------------------------------------------------------
+  added instrument      |      Coef.   Std. err.        z    P>|z|
+------------------------+-------------------------------------------
+  regime 1 (y_1)
+                    z2  |     .28318     .040836     6.93    0.000
+  regime 0 (y_0)
+                    z2  |    .053182     .021371     2.49    0.013
+--------------------------------------------------------------------
+  joint      Wald chi2(2) =    54.98   Prob > chi2 = 0.0000
+  regime 1   Wald chi2(1) =    48.09   Prob > chi2 = 0.0000
+  regime 0   Wald chi2(1) =     6.19   Prob > chi2 = 0.0128
+A rejection says that the added instrument(s) carry information on the regime errors beyond the
+selection index: a direct effect on the outcome (exclusion) or a second index in participation.
+
+. di as txt _n "expected (Python): coef .28318 (.04084) regime 1, .05318 (.02137) regime 0;"
+
+expected (Python): coef .28318 (.04084) regime 1, .05318 (.02137) regime 0;
+
+. di as txt   "                   joint chi2(2) = 54.98, regime 1 chi2(1) = 48.09, regime 0 chi2(1) = 6.19"
+                   joint chi2(2) = 54.98, regime 1 chi2(1) = 48.09, regime 0 chi2(1) = 6.19
+
+. * ---- single instrument (esr_sim): the instrument tests itself, warning printed -------------
+. use "data/esr_sim.dta", clear
+(ESR simule -- parametres connus (voir .do compagnon))
+
+. esreg y x, select(d = x z) nolog
+
+
+Endogenous switching regression -- full information ML
+
+                                                       Number of obs =  20,000
+                                                       Wald chi2(1)  = 9842.16
+Log likelihood = -39940.291                            Prob > chi2   =  0.0000
+
+------------------------------------------------------------------------------
+           y | Coefficient  Std. err.      z    P>|z|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+y_1          |
+           x |   1.205903   .0121553    99.21   0.000     1.182079    1.229727
+       _cons |   .9831364   .0189707    51.82   0.000     .9459545    1.020318
+-------------+----------------------------------------------------------------
+y_0          |
+           x |   .3865108   .0109584    35.27   0.000     .3650327    .4079889
+       _cons |   .4803904   .0196117    24.50   0.000     .4419522    .5188286
+-------------+----------------------------------------------------------------
+d            |
+           x |    .292636   .0103871    28.17   0.000     .2722778    .3129943
+           z |   .9081516   .0128427    70.71   0.000     .8829804    .9333227
+       _cons |   .2042513   .0102002    20.02   0.000     .1842592    .2242433
+-------------+----------------------------------------------------------------
+lnsigma_1    |
+       _cons |   .2549285   .0083776    30.43   0.000     .2385086    .2713483
+-------------+----------------------------------------------------------------
+lnsigma_0    |
+       _cons |  -.0094671   .0082558    -1.15   0.251    -.0256482    .0067139
+-------------+----------------------------------------------------------------
+atanhrho_1   |
+       _cons |   .6991283   .0276441    25.29   0.000     .6449469    .7533097
+-------------+----------------------------------------------------------------
+atanhrho_0   |
+       _cons |  -.3238298   .0263308   -12.30   0.000    -.3754372   -.2722223
+------------------------------------------------------------------------------
+LR test of independent equations (rho1 = rho0 = 0): chi2(2) =   787.01   Prob > chi2 = 0.0000
+sigma_1 =  1.29037   sigma_0 =  .990578   rho_1 =  .603814   rho_0 = -.312966
+
+Treatment effects (std. err.: influence function of the whole procedure)
+----------------------------------------------------------------------------
+Index    |   Estimate   Std. err.        z    P>|z|     [95% conf. interval]
+---------+------------------------------------------------------------------
+     ATT |    1.17919    .0345787    34.10   0.000      1.11142     1.24696
+     ATU |   -.343526    .0389294    -8.82   0.000     -.419826    -.267225
+     ATE |    .508129    .0275039    18.47   0.000      .454222     .562035
+   kappa |    1.08916    .0373076    29.19   0.000      1.01604     1.16228
+----------------------------------------------------------------------------
+kappa = rho1*sigma1 - rho0*sigma0;  ATT - ATU = kappa*(mean lambda1 + mean lambda0)
+Variance of ATT: parameters   .00111 + sampling  .000058 + covariance  .000024 (by observation)
+Common support of P(Z): [0.0213, 0.9910]
+
+. esrtest, suff
+
+Test of index sufficiency:  H0: E[omega_j | X, Z, u] = E[omega_j | X, u]
+note: a single excluded instrument (z); it is tested itself, so that
+      identification rests on the curvature of lambda alone -- read with care
+(two-step re-estimation with z added to both regime equations; kept excluded: none)
+--------------------------------------------------------------------
+  added instrument      |      Coef.   Std. err.        z    P>|z|
+------------------------+-------------------------------------------
+  regime 1 (y_1)
+                     z  |   -.046684     .043015    -1.09    0.278
+  regime 0 (y_0)
+                     z  |  -.0041366     .045094    -0.09    0.927
+--------------------------------------------------------------------
+  joint      Wald chi2(2) =     1.19   Prob > chi2 = 0.5524
+  regime 1   Wald chi2(1) =     1.18   Prob > chi2 = 0.2778
+  regime 0   Wald chi2(1) =     0.01   Prob > chi2 = 0.9269
+A rejection says that the added instrument(s) carry information on the regime errors beyond the
+selection index: a direct effect on the outcome (exclusion) or a second index in participation.
+
+. di as txt _n "expected (Python): coef -.04668 (.04301) regime 1, -.00414 (.04509) regime 0; joint chi2(2) = 1.19 (p .5
+> 52)"
+
+expected (Python): coef -.04668 (.04301) regime 1, -.00414 (.04509) regime 0; joint chi2(2) = 1.19 (p .552)
+
+. di as txt "e(cmd) after esrtest: `e(cmd)'   e(method) = `e(method)'   (expected esreg, fiml: the user's estimation is 
+> kept)"
+e(cmd) after esrtest: esreg   e(method) = fiml   (expected esreg, fiml: the user's estimation is kept)
+
+. estimates dir
+
+-----------------------------------------------------------------------------------------------------
+             |           Dependent  Number of        
+        Name | Command    variable     param.  Title 
+-------------+---------------------------------------------------------------------------------------
+      _esreg | esreg             y         11  Endogenous switching regression -- full information ML
+-----------------------------------------------------------------------------------------------------
+
+. 
+. * =====================================================================================
+. * esrtest, normal  (normality by regime, Section 4.5) against the Python reference
+. * =====================================================================================
+. foreach f in esreg esreg_engine esreg_mata _esreg_getest _esreg_data _esreg_effects_post _esreg_esample _esreg_ifcov e
+> srtest {
+  2.     cap confirm file "`f'.ado"
+  3.     if (_rc == 0) run "`f'.ado"
+  4.     else {
+  5.         cap confirm file "src/`f'.ado"
+  6.         if (_rc == 0) run "src/`f'.ado"
+  7.         else          run "../src/`f'.ado"
+  8.     }
+  9. }
+
+. use "data/esr_sim.dta", clear
+(ESR simule -- parametres connus (voir .do compagnon))
+
+. esreg y x, select(d = x z) nolog
+
+
+Endogenous switching regression -- full information ML
+
+                                                       Number of obs =  20,000
+                                                       Wald chi2(1)  = 9842.16
+Log likelihood = -39940.291                            Prob > chi2   =  0.0000
+
+------------------------------------------------------------------------------
+           y | Coefficient  Std. err.      z    P>|z|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+y_1          |
+           x |   1.205903   .0121553    99.21   0.000     1.182079    1.229727
+       _cons |   .9831364   .0189707    51.82   0.000     .9459545    1.020318
+-------------+----------------------------------------------------------------
+y_0          |
+           x |   .3865108   .0109584    35.27   0.000     .3650327    .4079889
+       _cons |   .4803904   .0196117    24.50   0.000     .4419522    .5188286
+-------------+----------------------------------------------------------------
+d            |
+           x |    .292636   .0103871    28.17   0.000     .2722778    .3129943
+           z |   .9081516   .0128427    70.71   0.000     .8829804    .9333227
+       _cons |   .2042513   .0102002    20.02   0.000     .1842592    .2242433
+-------------+----------------------------------------------------------------
+lnsigma_1    |
+       _cons |   .2549285   .0083776    30.43   0.000     .2385086    .2713483
+-------------+----------------------------------------------------------------
+lnsigma_0    |
+       _cons |  -.0094671   .0082558    -1.15   0.251    -.0256482    .0067139
+-------------+----------------------------------------------------------------
+atanhrho_1   |
+       _cons |   .6991283   .0276441    25.29   0.000     .6449469    .7533097
+-------------+----------------------------------------------------------------
+atanhrho_0   |
+       _cons |  -.3238298   .0263308   -12.30   0.000    -.3754372   -.2722223
+------------------------------------------------------------------------------
+LR test of independent equations (rho1 = rho0 = 0): chi2(2) =   787.01   Prob > chi2 = 0.0000
+sigma_1 =  1.29037   sigma_0 =  .990578   rho_1 =  .603814   rho_0 = -.312966
+
+Treatment effects (std. err.: influence function of the whole procedure)
+----------------------------------------------------------------------------
+Index    |   Estimate   Std. err.        z    P>|z|     [95% conf. interval]
+---------+------------------------------------------------------------------
+     ATT |    1.17919    .0345787    34.10   0.000      1.11142     1.24696
+     ATU |   -.343526    .0389294    -8.82   0.000     -.419826    -.267225
+     ATE |    .508129    .0275039    18.47   0.000      .454222     .562035
+   kappa |    1.08916    .0373076    29.19   0.000      1.01604     1.16228
+----------------------------------------------------------------------------
+kappa = rho1*sigma1 - rho0*sigma0;  ATT - ATU = kappa*(mean lambda1 + mean lambda0)
+Variance of ATT: parameters   .00111 + sampling  .000058 + covariance  .000024 (by observation)
+Common support of P(Z): [0.0213, 0.9910]
+
+. esrtest, normal
+
+Normality by regime
+(a) Hausman contrast, FIML vs two-step (H0: trivariate normality, A3)
+----------------------------------------------------------------------
+                          |   two-step        FIML   difference   Std. err.
+--------------------------+-------------------------------------------
+                     d:x  |     0.2923      0.2926     -0.0003      0.0018
+                     d:z  |     0.9133      0.9082      0.0051      0.0022
+                 d:_cons  |     0.2033      0.2043     -0.0010      0.0010
+                   y_1:x  |     1.2012      1.2059     -0.0047      0.0018
+               y_1:_cons  |     1.0079      0.9831      0.0247      0.0094
+          y_1:rho1sigma1  |     0.7334      0.7791     -0.0457      0.0174
+                   y_0:x  |     0.3864      0.3865     -0.0001      0.0006
+               y_0:_cons  |     0.4808      0.4804      0.0004      0.0038
+          y_0:rho0sigma0  |    -0.3101     -0.3100     -0.0001      0.0057
+----------------------------------------------------------------------
+  Hausman chi2(9) =    11.00   Prob > chi2 = 0.2760
+  kappa: two-step   1.0436   FIML   1.0892   difference -.045605 (s.e.  .01848, z =  -2.47)
+  Std. err. of the differences from the influence functions of the two estimators.
+
+(b) Hermite controls beside the Mills ratio (H0: E[omega_j | u] linear in u, A2)
+--------------------------------------------------------------------
+  control                |      Coef.   Std. err.        z    P>|z|
+------------------------+-------------------------------------------
+  regime 1 (y_1)
+        E[u^2-1 | D,Z]  |    .029602     .075553     0.39    0.695
+       E[u^3-3u | D,Z]  |    -.08243      .04492    -1.84    0.066
+  regime 0 (y_0)
+        E[u^2-1 | D,Z]  |    .011019     .071339     0.15    0.877
+       E[u^3-3u | D,Z]  |   -.013195     .033822    -0.39    0.696
+--------------------------------------------------------------------
+  joint      Wald chi2(4) =     9.10   Prob > chi2 = 0.0587
+  regime 1   Wald chi2(2) =     7.79   Prob > chi2 = 0.0203
+  regime 0   Wald chi2(2) =     1.31   Prob > chi2 = 0.5182
+  cubic terms (u^3-3u, both regimes) Wald chi2(2) =     3.53   Prob > chi2 = 0.1716
+Reading: (a) rejects when the regime laws are not normal (the likelihood is then
+inconsistent, the two-step is not); (b) rejects when E[omega_j | u] bends (both routes
+lose the curve; the augmented two-step, esreg ..., method(twostep) hermite(#), fits it,
+of order 3 if the cubic terms reject, else 2; the semiparametric MTE of esrmte checks it).
+
+. di as txt _n "expected (Python): Hausman chi2(9) = 11.00 (p .276); kappa 1.044 vs 1.089, diff -.046 (s.e. .018)"
+
+expected (Python): Hausman chi2(9) = 11.00 (p .276); kappa 1.044 vs 1.089, diff -.046 (s.e. .018)
+
+. di as txt   "                   Hermite: coefs .030 -.082 (regime 1) .011 -.013 (regime 0); joint chi2(4) = 9.10, regi
+> me 1 7.79, regime 0 1.31"
+                   Hermite: coefs .030 -.082 (regime 1) .011 -.013 (regime 0); joint chi2(4) = 9.10, regime 1 7.79, regi
+> me 0 1.31
+
+. return list
+
+scalars:
+               r(p_h3) =  .1716050084906054
+            r(chi2_h3) =  3.525119810692035
+            r(chi2_h0) =  1.314682712129654
+            r(chi2_h1) =  7.793479328123468
+                r(p_h) =  .0586869031811298
+               r(df_h) =  4
+             r(chi2_h) =  9.098381616661289
+           r(kappa_se) =  .0184764055262918
+         r(kappa_diff) =  -.0456052437111531
+         r(kappa_fiml) =  1.089160046927538
+           r(kappa_2s) =  1.043554803216384
+                  r(p) =  .275988927110127
+                 r(df) =  9
+               r(chi2) =  10.99591674649939
+
+macros:
+               r(test) : "normal"
+
+matrices:
+                  r(q) :  9 x 3
+            r(hermite) :  4 x 4
+
+. use "data/esr_skew.dta", clear
+(Paper A, Sec. 5.3, design C2: skewed errors; true kappa 1.08)
+
+. esreg y x, select(d = x z) method(twostep) nolog
+
+Endogenous switching regression -- two-step     Number of obs =     10000
+Outcome: y   Treatment: d                       Treated       =      5570
+Std. err.: exact variance of the two-step procedure (stacked moments)
+------------------------------------------------------------------------------
+           y | Coefficient  Std. err.      z    P>|z|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+d            |
+           x |   .2652058   .0145704    18.20   0.000     .2366483    .2937632
+           z |   .8838194   .0179504    49.24   0.000     .8486372    .9190016
+       _cons |   .1973233    .014335    13.77   0.000     .1692272    .2254193
+-------------+----------------------------------------------------------------
+y_1          |
+           x |   1.173126   .0196622    59.66   0.000     1.134589    1.211663
+      lambda |   .7934211   .0545361    14.55   0.000     .6865323      .90031
+       _cons |   .9871777   .0352455    28.01   0.000     .9180979    1.056258
+-------------+----------------------------------------------------------------
+y_0          |
+           x |    .408108   .0149795    27.24   0.000     .3787488    .4374672
+      lambda |   -.373497   .0381581    -9.79   0.000    -.4482855   -.2987086
+       _cons |   .4406382   .0283345    15.55   0.000     .3851036    .4961729
+------------------------------------------------------------------------------
+sigma_1 =  1.47723   sigma_0 =  .985127   rho_1 =  .537102   rho_0 = -.379136
+
+Treatment effects (std. err.: influence function of the whole procedure)
+----------------------------------------------------------------------------
+Index    |   Estimate   Std. err.        z    P>|z|     [95% conf. interval]
+---------+------------------------------------------------------------------
+     ATT |    1.25885    .0522976    24.07   0.000      1.15635     1.36135
+     ATU |   -.344916    .0733844    -4.70   0.000     -.488747    -.201085
+     ATE |    .548381    .0450786    12.16   0.000      .460028     .636733
+   kappa |    1.16692    .0674883    17.29   0.000      1.03464     1.29919
+----------------------------------------------------------------------------
+kappa = rho1*sigma1 - rho0*sigma0;  ATT - ATU = kappa*(mean lambda1 + mean lambda0)
+Variance of ATT: parameters   .00257 + sampling  .000107 + covariance  .000059 (by observation)
+Common support of P(Z): [0.0289, 0.9857]
+
+. esrtest, normal
+
+Normality by regime
+(a) Hausman contrast, FIML vs two-step (H0: trivariate normality, A3)
+----------------------------------------------------------------------
+                          |   two-step        FIML   difference   Std. err.
+--------------------------+-------------------------------------------
+                     d:x  |     0.2652      0.2034      0.0618      0.0077
+                     d:z  |     0.8838      0.4958      0.3880      0.0238
+                 d:_cons  |     0.1973      0.1591      0.0383      0.0054
+                   y_1:x  |     1.1731      1.2769     -0.1037      0.0115
+               y_1:_cons  |     0.9872      0.3746      0.6126      0.0480
+          y_1:rho1sigma1  |     0.7934      1.6896     -0.8961      0.0699
+                   y_0:x  |     0.4081      0.3287      0.0794      0.0096
+               y_0:_cons  |     0.4406     -0.1829      0.6235      0.0466
+          y_0:rho0sigma0  |    -0.3735     -1.1353      0.7618      0.0541
+----------------------------------------------------------------------
+  Hausman chi2(9) =   397.70   Prob > chi2 = 0.0000
+  kappa: two-step   1.1669   FIML   2.8249   difference   -1.658 (s.e.    .107, z = -15.49)
+  Std. err. of the differences from the influence functions of the two estimators.
+
+(b) Hermite controls beside the Mills ratio (H0: E[omega_j | u] linear in u, A2)
+--------------------------------------------------------------------
+  control                |      Coef.   Std. err.        z    P>|z|
+------------------------+-------------------------------------------
+  regime 1 (y_1)
+        E[u^2-1 | D,Z]  |     .22718      .13424     1.69    0.091
+       E[u^3-3u | D,Z]  |    -.10635     .090901    -1.17    0.242
+  regime 0 (y_0)
+        E[u^2-1 | D,Z]  |   -.054874      .10069    -0.54    0.586
+       E[u^3-3u | D,Z]  |    -.01853     .050293    -0.37    0.713
+--------------------------------------------------------------------
+  joint      Wald chi2(4) =     3.33   Prob > chi2 = 0.5040
+  regime 1   Wald chi2(2) =     2.98   Prob > chi2 = 0.2257
+  regime 0   Wald chi2(2) =     0.34   Prob > chi2 = 0.8421
+  cubic terms (u^3-3u, both regimes) Wald chi2(2) =     1.51   Prob > chi2 = 0.4701
+Reading: (a) rejects when the regime laws are not normal (the likelihood is then
+inconsistent, the two-step is not); (b) rejects when E[omega_j | u] bends (both routes
+lose the curve; the augmented two-step, esreg ..., method(twostep) hermite(#), fits it,
+of order 3 if the cubic terms reject, else 2; the semiparametric MTE of esrmte checks it).
+
+. di as txt _n "expected (Python): Hausman chi2(9) = 397.70; kappa 1.167 vs 2.825, diff -1.658 (s.e. .107); Hermite chi2
+> (4) = 3.33 (p .50)"
+
+expected (Python): Hausman chi2(9) = 397.70; kappa 1.167 vs 2.825, diff -1.658 (s.e. .107); Hermite chi2(4) = 3.33 (p .5
+> 0)
+
+. use "data/esr_nonlin.dta", clear
+(Paper A, Sec. 5.3, design C1: gain nonlinear in u; true kappa 1.08)
+
+. esreg y x, select(d = x z) method(twostep) nolog
+
+Endogenous switching regression -- two-step     Number of obs =     10000
+Outcome: y   Treatment: d                       Treated       =      5604
+Std. err.: exact variance of the two-step procedure (stacked moments)
+------------------------------------------------------------------------------
+           y | Coefficient  Std. err.      z    P>|z|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+d            |
+           x |   .3067467   .0148932    20.60   0.000     .2775566    .3359369
+           z |   .8883828   .0180545    49.21   0.000     .8529966    .9237691
+       _cons |   .2057125   .0143665    14.32   0.000     .1775547    .2338703
+-------------+----------------------------------------------------------------
+y_1          |
+           x |   1.159694   .0258822    44.81   0.000     1.108966    1.210423
+      lambda |    .543444   .1014963     5.35   0.000      .344515    .7423731
+       _cons |   .9834115   .0512459    19.19   0.000     .8829714    1.083852
+-------------+----------------------------------------------------------------
+y_0          |
+           x |   .4257015    .016014    26.58   0.000     .3943147    .4570883
+      lambda |  -.3347157   .0378897    -8.83   0.000    -.4089781   -.2604532
+       _cons |   .4670964   .0301539    15.49   0.000     .4079959    .5261968
+------------------------------------------------------------------------------
+sigma_1 =  1.86162   sigma_0 =   1.0108   rho_1 =   .29192   rho_0 = -.331141
+
+Treatment effects (std. err.: influence function of the whole procedure)
+----------------------------------------------------------------------------
+Index    |   Estimate   Std. err.        z    P>|z|     [95% conf. interval]
+---------+------------------------------------------------------------------
+     ATT |    1.08803    .0561481    19.38   0.000      .977979     1.19808
+     ATU |   -.210066     .117275    -1.79   0.073     -.439921    .0197891
+     ATE |    .517385    .0592842     8.73   0.000       .40119      .63358
+   kappa |     .87816     .109231     8.04   0.000      .664071     1.09225
+----------------------------------------------------------------------------
+kappa = rho1*sigma1 - rho0*sigma0;  ATT - ATU = kappa*(mean lambda1 + mean lambda0)
+Variance of ATT: parameters   .00302 + sampling  .000089 + covariance  .000048 (by observation)
+Common support of P(Z): [0.0041, 0.9933]
+
+. esrtest, normal
+
+Normality by regime
+(a) Hausman contrast, FIML vs two-step (H0: trivariate normality, A3)
+----------------------------------------------------------------------
+                          |   two-step        FIML   difference   Std. err.
+--------------------------+-------------------------------------------
+                     d:x  |     0.3067      0.3035      0.0032      0.0120
+                     d:z  |     0.8884      0.8577      0.0307      0.0732
+                 d:_cons  |     0.2057      0.2104     -0.0047      0.0069
+                   y_1:x  |     1.1597      1.1982     -0.0385      0.0684
+               y_1:_cons  |     0.9834      0.7914      0.1920      0.3356
+          y_1:rho1sigma1  |     0.5434      0.8941     -0.3506      0.6003
+                   y_0:x  |     0.4257      0.4251      0.0006      0.0027
+               y_0:_cons  |     0.4671      0.4617      0.0054      0.0197
+          y_0:rho0sigma0  |    -0.3347     -0.3385      0.0037      0.0208
+----------------------------------------------------------------------
+  Hausman chi2(9) =     8.30   Prob > chi2 = 0.5041
+  kappa: two-step   .87816   FIML   1.2325   difference  -.35435 (s.e.   .6191, z =  -0.57)
+  Std. err. of the differences from the influence functions of the two estimators.
+
+(b) Hermite controls beside the Mills ratio (H0: E[omega_j | u] linear in u, A2)
+--------------------------------------------------------------------
+  control                |      Coef.   Std. err.        z    P>|z|
+------------------------+-------------------------------------------
+  regime 1 (y_1)
+        E[u^2-1 | D,Z]  |    -.44971      .25198    -1.78    0.074
+       E[u^3-3u | D,Z]  |     .88141      .24727     3.56    0.000
+  regime 0 (y_0)
+        E[u^2-1 | D,Z]  |     .17366      .10458     1.66    0.097
+       E[u^3-3u | D,Z]  |    .043715     .050575     0.86    0.387
+--------------------------------------------------------------------
+  joint      Wald chi2(4) =    28.57   Prob > chi2 = 0.0000
+  regime 1   Wald chi2(2) =    24.99   Prob > chi2 = 0.0000
+  regime 0   Wald chi2(2) =     4.32   Prob > chi2 = 0.1153
+  cubic terms (u^3-3u, both regimes) Wald chi2(2) =    13.35   Prob > chi2 = 0.0013
+Reading: (a) rejects when the regime laws are not normal (the likelihood is then
+inconsistent, the two-step is not); (b) rejects when E[omega_j | u] bends (both routes
+lose the curve; the augmented two-step, esreg ..., method(twostep) hermite(#), fits it,
+of order 3 if the cubic terms reject, else 2; the semiparametric MTE of esrmte checks it).
+
+. di as txt _n "expected (Python): Hausman chi2(9) = 8.30 (p .50); kappa .878 vs 1.233, diff -.354 (s.e. .619)"
+
+expected (Python): Hausman chi2(9) = 8.30 (p .50); kappa .878 vs 1.233, diff -.354 (s.e. .619)
+
+. di as txt   "                   Hermite: coefs -.45 .881 (regime 1) .174 .044 (regime 0); joint chi2(4) = 28.57, regim
+> e 1 24.99, regime 0 4.32"
+                   Hermite: coefs -.45 .881 (regime 1) .174 .044 (regime 0); joint chi2(4) = 28.57, regime 1 24.99, regi
+> me 0 4.32
+
+. di as txt "e(cmd) after esrtest: `e(cmd)'  e(method) = `e(method)'  e(att) = " e(att) "  (expected esreg, twostep, 1.0
+> 8803)"
+e(cmd) after esrtest: esreg  e(method) = twostep  e(att) = 1.0880268  (expected esreg, twostep, 1.08803)
+
+. estimates dir
+
+------------------------------------------------------------------------------------------
+             |           Dependent  Number of        
+        Name | Command    variable     param.  Title 
+-------------+----------------------------------------------------------------------------
+      _esreg | esreg             y          9  Endogenous switching regression -- two-step
+------------------------------------------------------------------------------------------
+
+. 
+. * =====================================================================================
+. * esrtest, pdid  (pseudo-DiD on the selection index, Section 4.6) against Python
+. * =====================================================================================
+. foreach f in esrtest {
+  2.     cap confirm file "`f'.ado"
+  3.     if (_rc == 0) run "`f'.ado"
+  4.     else {
+  5.         cap confirm file "src/`f'.ado"
+  6.         if (_rc == 0) run "src/`f'.ado"
+  7.         else          run "../src/`f'.ado"
+  8.     }
+  9. }
+
+. use "data/esr_sim.dta", clear
+(ESR simule -- parametres connus (voir .do compagnon))
+
+. esreg y x, select(d = x z) method(twostep) nolog
+
+Endogenous switching regression -- two-step     Number of obs =     20000
+Outcome: y   Treatment: d                       Treated       =     11186
+Std. err.: exact variance of the two-step procedure (stacked moments)
+------------------------------------------------------------------------------
+           y | Coefficient  Std. err.      z    P>|z|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+d            |
+           x |   .2923108   .0105781    27.63   0.000     .2715782    .3130434
+           z |   .9132787   .0129668    70.43   0.000     .8878644    .9386931
+       _cons |   .2032958   .0102485    19.84   0.000     .1832091    .2233824
+-------------+----------------------------------------------------------------
+y_1          |
+           x |   1.201163   .0121475    98.88   0.000     1.177354    1.224971
+      lambda |   .7334445   .0311533    23.54   0.000     .6723851    .7945039
+       _cons |   1.007877    .020892    48.24   0.000     .9669294    1.048824
+-------------+----------------------------------------------------------------
+y_0          |
+           x |   .3864293   .0109357    35.34   0.000     .3649957     .407863
+      lambda |  -.3101103   .0252221   -12.30   0.000    -.3595446    -.260676
+       _cons |   .4807554   .0197401    24.35   0.000     .4420655    .5194454
+------------------------------------------------------------------------------
+sigma_1 =  1.28158   sigma_0 =  .990469   rho_1 =  .572297   rho_0 = -.313094
+
+Treatment effects (std. err.: influence function of the whole procedure)
+----------------------------------------------------------------------------
+Index    |   Estimate   Std. err.        z    P>|z|     [95% conf. interval]
+---------+------------------------------------------------------------------
+     ATT |    1.17991    .0349278    33.78   0.000      1.11146     1.24837
+     ATU |   -.287578    .0432144    -6.65   0.000     -.372276    -.202879
+     ATE |     .53319    .0288928    18.45   0.000      .476561     .589819
+   kappa |    1.04355    .0406198    25.69   0.000      .963941     1.12317
+----------------------------------------------------------------------------
+kappa = rho1*sigma1 - rho0*sigma0;  ATT - ATU = kappa*(mean lambda1 + mean lambda0)
+Variance of ATT: parameters   .00114 + sampling  .000057 + covariance  .000024 (by observation)
+Common support of P(Z): [0.0207, 0.9912]
+
+. esrtest, pdid
+
+Pseudo-DiD on the selection index (H0: no selection on gains, kappa = 0)
+(strata of the probit index Z'g; X-adjusted gap treated - untreated within each)
+------------------------------------------------------------------------------
+stratum |    n1     n0   mean P |     gap  Std. err. | mean lambda1  mean lambda0
+--------+----------------------+--------------------+--------------------------
+    1   |  3209   6791    0.285 |  0.9527     0.0253 |       0.9874        0.4606
+    2   |  7977   2023    0.836 |  0.4829     0.0283 |       0.3131        1.2545
+------------------------------------------------------------------------------
+  double difference of the gaps, top - bottom:     -0.4698  (s.e. 0.0376)
+  within treated,   top - bottom (C1):            -0.4847  (s.e. 0.0247, z = -19.61)   sign of rho1*sigma1 = sign(C1/pi1
+> ), pi1 = -0.660
+  within untreated, top - bottom (C0):             0.2453  (s.e. 0.0248, z =   9.88)   sign of rho0*sigma0 = -sign(C0/pi
+> 0), pi0 =  0.777
+  rho1*sigma1 = C1/pi1 =   0.7348 (s.e. 0.0379)    rho0*sigma0 = -C0/pi0 =  -0.3158 (s.e. 0.0320)
+  kappa_dd =   1.0506  (s.e. 0.0501, z =  20.95)     esreg kappa =   1.0436 (s.e. 0.0406)
+pi_j: the X-adjusted contrast of the Mills ratio lambda_j, top - bottom, in group j (the same
+regression as C_j with lambda_j for y).
+Std. err.: influence function of the whole procedure (probit, boundaries of the strata, regressions).
+Reading: with kappa > 0 the gap falls across the strata (the eager treated at low P gain
+more, the reluctant untreated at high P would have gained less); the signs of C1 and C0 need
+only A2; kappa_dd uses the Mills ratios of A1. Never split on the outcome itself (collider).
+
+. di as txt _n "expected (Python, nq=2): gaps .9527 (.0253) and .4829 (.0283); C1 -.4847 (.0247) C0 .2453 (.0248);"
+
+expected (Python, nq=2): gaps .9527 (.0253) and .4829 (.0283); C1 -.4847 (.0247) C0 .2453 (.0248);
+
+. di as txt   "   pi1 -.6596 pi0 .7766; rho1sigma1 .7348 rho0sigma0 -.3158; kappa_dd 1.0506 (.0501); DD -.4698 (.0376)"
+   pi1 -.6596 pi0 .7766; rho1sigma1 .7348 rho0sigma0 -.3158; kappa_dd 1.0506 (.0501); DD -.4698 (.0376)
+
+. esrtest, pdid nq(4)
+
+Pseudo-DiD on the selection index (H0: no selection on gains, kappa = 0)
+(strata of the probit index Z'g; X-adjusted gap treated - untreated within each)
+------------------------------------------------------------------------------
+stratum |    n1     n0   mean P |     gap  Std. err. | mean lambda1  mean lambda0
+--------+----------------------+--------------------+--------------------------
+    1   |   865   4135    0.151 |  1.1356     0.0443 |       1.3667        0.2929
+    2   |  2344   2656    0.459 |  0.8667     0.0322 |       0.8474        0.7217
+    3   |  3453   1547    0.698 |  0.6288     0.0344 |       0.4947        1.1279
+    4   |  4524    476    0.925 |  0.3240     0.0564 |       0.1745        1.6661
+------------------------------------------------------------------------------
+  double difference of the gaps, top - bottom:     -0.8116  (s.e. 0.0714)
+  within treated,   top - bottom (C1):            -0.8655  (s.e. 0.0425, z = -20.35)   sign of rho1*sigma1 = sign(C1/pi1
+> ), pi1 = -1.181
+  within untreated, top - bottom (C0):             0.4990  (s.e. 0.0466, z =  10.72)   sign of rho0*sigma0 = -sign(C0/pi
+> 0), pi0 =  1.354
+  rho1*sigma1 = C1/pi1 =   0.7326 (s.e. 0.0369)    rho0*sigma0 = -C0/pi0 =  -0.3686 (s.e. 0.0346)
+  kappa_dd =   1.1012  (s.e. 0.0509, z =  21.64)     esreg kappa =   1.0436 (s.e. 0.0406)
+pi_j: the X-adjusted contrast of the Mills ratio lambda_j, top - bottom, in group j (the same
+regression as C_j with lambda_j for y).
+Std. err.: influence function of the whole procedure (probit, boundaries of the strata, regressions).
+Reading: with kappa > 0 the gap falls across the strata (the eager treated at low P gain
+more, the reluctant untreated at high P would have gained less); the signs of C1 and C0 need
+only A2; kappa_dd uses the Mills ratios of A1. Never split on the outcome itself (collider).
+
+. di as txt _n "expected (Python, nq=4): gaps 1.1356 .8667 .6288 .3240; C1 -.8655 (.0425) C0 .4990 (.0466);"
+
+expected (Python, nq=4): gaps 1.1356 .8667 .6288 .3240; C1 -.8655 (.0425) C0 .4990 (.0466);
+
+. di as txt   "   pi1 -1.1815 pi0 1.3540; kappa_dd 1.1012 (.0509); DD -.8116 (.0714)"
+   pi1 -1.1815 pi0 1.3540; kappa_dd 1.1012 (.0509); DD -.8116 (.0714)
+
+. use "data/esr_annex2.dta", clear
+(Exemple ESR compatible -- effet vrai = 2 (ATT=ATU=ATE))
+
+. esreg income educ, select(treatment = educ i.region inst) nolog
+
+
+Endogenous switching regression -- full information ML
+
+                                                       Number of obs =   5,000
+                                                       Wald chi2(1)  = 9364.86
+Log likelihood = -4229.3298                            Prob > chi2   =  0.0000
+
+------------------------------------------------------------------------------
+      income | Coefficient  Std. err.      z    P>|z|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+income_1     |
+        educ |   .5039501   .0052076    96.77   0.000     .4937434    .5141568
+       _cons |    62.8872    .018741  3355.60   0.000     62.85047    62.92393
+-------------+----------------------------------------------------------------
+income_0     |
+        educ |    .503302   .0073309    68.65   0.000     .4889337    .5176704
+       _cons |    60.9076    .029714  2049.79   0.000     60.84937    60.96584
+-------------+----------------------------------------------------------------
+treatment    |
+        educ |  -.0034487    .017057    -0.20   0.840    -.0368798    .0299824
+             |
+      region |
+          2  |   .2872394   .0470878     6.10   0.000      .194949    .3795297
+          3  |   .3312872   .0441748     7.50   0.000     .2447062    .4178683
+             |
+        inst |   .7008037   .0231935    30.22   0.000     .6553452    .7462622
+       _cons |   .3195646   .0613857     5.21   0.000     .1992509    .4398784
+-------------+----------------------------------------------------------------
+lnsigma_1    |
+       _cons |  -1.031078   .0164339   -62.74   0.000    -1.063288   -.9988683
+-------------+----------------------------------------------------------------
+lnsigma_0    |
+       _cons |  -1.004442   .0234157   -42.90   0.000    -1.050336   -.9585478
+-------------+----------------------------------------------------------------
+atanhrho_1   |
+       _cons |   .5907883   .0621601     9.50   0.000     .4689568    .7126198
+-------------+----------------------------------------------------------------
+atanhrho_0   |
+       _cons |   .5748916   .0631184     9.11   0.000     .4511818    .6986013
+------------------------------------------------------------------------------
+LR test of independent equations (rho1 = rho0 = 0): chi2(2) =   172.38   Prob > chi2 = 0.0000
+sigma_1 =  .356622   sigma_0 =  .366249   rho_1 =  .530462   rho_0 =  .518943
+
+Treatment effects (std. err.: influence function of the whole procedure)
+----------------------------------------------------------------------------
+Index    |   Estimate   Std. err.        z    P>|z|     [95% conf. interval]
+---------+------------------------------------------------------------------
+     ATT |    1.98115    .0291972    67.85   0.000      1.92393     2.03838
+     ATU |    1.98233    .0267541    74.09   0.000      1.92989     2.03477
+     ATE |    1.98155    .0230847    85.84   0.000       1.9363     2.02679
+   kappa |-.000887549      .02634    -0.03   0.973    -.0525129    .0507378
+----------------------------------------------------------------------------
+kappa = rho1*sigma1 - rho0*sigma0;  ATT - ATU = kappa*(mean lambda1 + mean lambda0)
+Variance of ATT: parameters  .000852 + sampling  1.9e-10 + covariance  4.0e-08 (by observation)
+Common support of P(Z): [0.0421, 0.9754]
+
+. esrtest, pdid
+
+Pseudo-DiD on the selection index (H0: no selection on gains, kappa = 0)
+(strata of the probit index Z'g; X-adjusted gap treated - untreated within each)
+------------------------------------------------------------------------------
+stratum |    n1     n0   mean P |     gap  Std. err. | mean lambda1  mean lambda0
+--------+----------------------+--------------------+--------------------------
+    1   |  1216   1284    0.483 |  2.2578     0.0135 |       0.7538        0.7183
+    2   |  2114    386    0.864 |  2.2983     0.0184 |       0.2671        1.4485
+------------------------------------------------------------------------------
+  double difference of the gaps, top - bottom:      0.0405  (s.e. 0.0229)
+  within treated,   top - bottom (C1):            -0.0809  (s.e. 0.0122, z =  -6.63)   sign of rho1*sigma1 = sign(C1/pi1
+> ), pi1 = -0.487
+  within untreated, top - bottom (C0):            -0.1212  (s.e. 0.0195, z =  -6.22)   sign of rho0*sigma0 = -sign(C0/pi
+> 0), pi0 =  0.730
+  rho1*sigma1 = C1/pi1 =   0.1662 (s.e. 0.0254)    rho0*sigma0 = -C0/pi0 =   0.1659 (s.e. 0.0269)
+  kappa_dd =   0.0003  (s.e. 0.0361, z =   0.01)     esreg kappa =  -0.0009 (s.e. 0.0263)
+pi_j: the X-adjusted contrast of the Mills ratio lambda_j, top - bottom, in group j (the same
+regression as C_j with lambda_j for y).
+Std. err.: influence function of the whole procedure (probit, boundaries of the strata, regressions).
+Reading: with kappa > 0 the gap falls across the strata (the eager treated at low P gain
+more, the reluctant untreated at high P would have gained less); the signs of C1 and C0 need
+only A2; kappa_dd uses the Mills ratios of A1. Never split on the outcome itself (collider).
+
+. di as txt _n "expected (Python, nq=2): gaps 2.2578 2.2983; C1 -.0809 (.0122) C0 -.1212 (.0195); pi1 -.4867 pi0 .7304;"
+
+expected (Python, nq=2): gaps 2.2578 2.2983; C1 -.0809 (.0122) C0 -.1212 (.0195); pi1 -.4867 pi0 .7304;
+
+. di as txt   "   rho1sigma1 .1662 rho0sigma0 .1659; kappa_dd .0003 (.0361); DD .0405 (.0229)"
+   rho1sigma1 .1662 rho0sigma0 .1659; kappa_dd .0003 (.0361); DD .0405 (.0229)
+
+. use "data/esr_skew.dta", clear
+(Paper A, Sec. 5.3, design C2: skewed errors; true kappa 1.08)
+
+. esreg y x, select(d = x z) method(twostep) nolog
+
+Endogenous switching regression -- two-step     Number of obs =     10000
+Outcome: y   Treatment: d                       Treated       =      5570
+Std. err.: exact variance of the two-step procedure (stacked moments)
+------------------------------------------------------------------------------
+           y | Coefficient  Std. err.      z    P>|z|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+d            |
+           x |   .2652058   .0145704    18.20   0.000     .2366483    .2937632
+           z |   .8838194   .0179504    49.24   0.000     .8486372    .9190016
+       _cons |   .1973233    .014335    13.77   0.000     .1692272    .2254193
+-------------+----------------------------------------------------------------
+y_1          |
+           x |   1.173126   .0196622    59.66   0.000     1.134589    1.211663
+      lambda |   .7934211   .0545361    14.55   0.000     .6865323      .90031
+       _cons |   .9871777   .0352455    28.01   0.000     .9180979    1.056258
+-------------+----------------------------------------------------------------
+y_0          |
+           x |    .408108   .0149795    27.24   0.000     .3787488    .4374672
+      lambda |   -.373497   .0381581    -9.79   0.000    -.4482855   -.2987086
+       _cons |   .4406382   .0283345    15.55   0.000     .3851036    .4961729
+------------------------------------------------------------------------------
+sigma_1 =  1.47723   sigma_0 =  .985127   rho_1 =  .537102   rho_0 = -.379136
+
+Treatment effects (std. err.: influence function of the whole procedure)
+----------------------------------------------------------------------------
+Index    |   Estimate   Std. err.        z    P>|z|     [95% conf. interval]
+---------+------------------------------------------------------------------
+     ATT |    1.25885    .0522976    24.07   0.000      1.15635     1.36135
+     ATU |   -.344916    .0733844    -4.70   0.000     -.488747    -.201085
+     ATE |    .548381    .0450786    12.16   0.000      .460028     .636733
+   kappa |    1.16692    .0674883    17.29   0.000      1.03464     1.29919
+----------------------------------------------------------------------------
+kappa = rho1*sigma1 - rho0*sigma0;  ATT - ATU = kappa*(mean lambda1 + mean lambda0)
+Variance of ATT: parameters   .00257 + sampling  .000107 + covariance  .000059 (by observation)
+Common support of P(Z): [0.0289, 0.9857]
+
+. esrtest, pdid nq(4)
+
+Pseudo-DiD on the selection index (H0: no selection on gains, kappa = 0)
+(strata of the probit index Z'g; X-adjusted gap treated - untreated within each)
+------------------------------------------------------------------------------
+stratum |    n1     n0   mean P |     gap  Std. err. | mean lambda1  mean lambda0
+--------+----------------------+--------------------+--------------------------
+    1   |   487   2013    0.164 |  1.2757     0.0726 |       1.3313        0.3071
+    2   |  1104   1396    0.458 |  0.8661     0.0494 |       0.8525        0.7236
+    3   |  1751    749    0.690 |  0.6033     0.0532 |       0.5067        1.1130
+    4   |  2228    272    0.913 |  0.2167     0.0828 |       0.1928        1.6336
+------------------------------------------------------------------------------
+  double difference of the gaps, top - bottom:     -1.0590  (s.e. 0.1100)
+  within treated,   top - bottom (C1):            -0.9235  (s.e. 0.0744, z = -12.42)   sign of rho1*sigma1 = sign(C1/pi1
+> ), pi1 = -1.126
+  within untreated, top - bottom (C0):             0.5246  (s.e. 0.0710, z =   7.39)   sign of rho0*sigma0 = -sign(C0/pi
+> 0), pi0 =  1.317
+  rho1*sigma1 = C1/pi1 =   0.8201 (s.e. 0.0666)    rho0*sigma0 = -C0/pi0 =  -0.3984 (s.e. 0.0543)
+  kappa_dd =   1.2185  (s.e. 0.0864, z =  14.10)     esreg kappa =   1.1669 (s.e. 0.0675)
+pi_j: the X-adjusted contrast of the Mills ratio lambda_j, top - bottom, in group j (the same
+regression as C_j with lambda_j for y).
+Std. err.: influence function of the whole procedure (probit, boundaries of the strata, regressions).
+Reading: with kappa > 0 the gap falls across the strata (the eager treated at low P gain
+more, the reluctant untreated at high P would have gained less); the signs of C1 and C0 need
+only A2; kappa_dd uses the Mills ratios of A1. Never split on the outcome itself (collider).
+
+. di as txt _n "expected (Python, nq=4): C1 -.9235 (.0744) C0 .5246 (.0710); pi1 -1.1261 pi0 1.3166; kappa_dd 1.2185 (.0
+> 864)"
+
+expected (Python, nq=4): C1 -.9235 (.0744) C0 .5246 (.0710); pi1 -1.1261 pi0 1.3166; kappa_dd 1.2185 (.0864)
+
+. return list
+
+scalars:
+               r(reps) =  0
+             r(cv_pi0) =  .0161212052014851
+             r(cv_pi1) =  .0206053690627797
+               r(ties) =  0
+                 r(nq) =  4
+              r(se_dd) =  .1100375239556006
+                 r(dd) =  -1.058998105079801
+        r(se_kappa_dd) =  .0864411627963968
+           r(kappa_dd) =  1.218494965760372
+         r(se_rhosig0) =  .0542533119160307
+            r(rhosig0) =  -.3984202077695007
+         r(se_rhosig1) =  .0666406782873511
+            r(rhosig1) =  .8200747579908709
+              r(dlam0) =  1.326557077123911
+              r(dlam1) =  -1.138581526518551
+             r(se_pi0) =  .0212258846050196
+                r(pi0) =  1.316643783125114
+             r(se_pi1) =  .0232033272347219
+                r(pi1) =  -1.126081613196386
+              r(se_C0) =  .0709871855013676
+                 r(C0) =  .5245774896311294
+              r(se_C1) =  .0743615630021308
+                 r(C1) =  -.9234711064199956
+
+macros:
+               r(test) : "pdid"
+             r(setype) : "influence function of the whole procedure (probit, boundaries of the strata, regressions)"
+
+matrices:
+         r(boundaries) :  3 x 5
+             r(strata) :  4 x 8
+
+. 
+. * =====================================================================================
+. * esrtest, spec  (specification of the selection equation, Section 4.1) against Python
+. * =====================================================================================
+. foreach f in esreg esreg_engine esreg_mata _esreg_getest _esreg_data _esreg_effects_post _esreg_esample _esreg_ifcov e
+> srtest {
+  2.     cap confirm file "`f'.ado"
+  3.     if (_rc == 0) run "`f'.ado"
+  4.     else {
+  5.         cap confirm file "src/`f'.ado"
+  6.         if (_rc == 0) run "src/`f'.ado"
+  7.         else          run "../src/`f'.ado"
+  8.     }
+  9. }
+
+. * ---- omitted quadratic in the index: D = 1{.2+.3x+.9z+.5(z^2-1)+u>0}, working probit on (x z)
+. use "data/esr_link.dta", clear
+(Selection index with an omitted quadratic in z: D = 1{.2+.3x+.9z+.5(z^2-1)+u>0};)
+
+. esreg y x, select(d = x z) nolog
+
+
+Endogenous switching regression -- full information ML
+
+                                                       Number of obs =   5,000
+                                                       Wald chi2(1)  = 2067.27
+Log likelihood = -10412.314                            Prob > chi2   =  0.0000
+
+------------------------------------------------------------------------------
+           y | Coefficient  Std. err.      z    P>|z|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+y_1          |
+           x |   1.176379   .0258731    45.47   0.000     1.125669     1.22709
+       _cons |   1.002674   .0492533    20.36   0.000     .9061396    1.099209
+-------------+----------------------------------------------------------------
+y_0          |
+           x |   .4120259   .0224703    18.34   0.000     .3679849    .4560668
+       _cons |   .5151756   .0607732     8.48   0.000     .3960623    .6342889
+-------------+----------------------------------------------------------------
+d            |
+           x |   .2486393   .0193145    12.87   0.000     .2107836     .286495
+           z |   .5947217   .0206002    28.87   0.000     .5543461    .6350974
+       _cons |    .051454   .0190224     2.70   0.007     .0141707    .0887373
+-------------+----------------------------------------------------------------
+lnsigma_1    |
+       _cons |   .2880635   .0182479    15.79   0.000     .2522983    .3238286
+-------------+----------------------------------------------------------------
+lnsigma_0    |
+       _cons |  -.0286868   .0188617    -1.52   0.128    -.0656551    .0082815
+-------------+----------------------------------------------------------------
+atanhrho_1   |
+       _cons |   .5975389   .0556825    10.73   0.000     .4884032    .7066746
+-------------+----------------------------------------------------------------
+atanhrho_0   |
+       _cons |  -.2786207   .0871185    -3.20   0.001    -.4493699   -.1078715
+------------------------------------------------------------------------------
+LR test of independent equations (rho1 = rho0 = 0): chi2(2) =   130.05   Prob > chi2 = 0.0000
+sigma_1 =  1.33384   sigma_0 =  .971721   rho_1 =  .535296   rho_0 = -.271628
+
+Treatment effects (std. err.: influence function of the whole procedure)
+----------------------------------------------------------------------------
+Index    |   Estimate   Std. err.        z    P>|z|     [95% conf. interval]
+---------+------------------------------------------------------------------
+     ATT |    1.23401     .118157    10.44   0.000      1.00243      1.4656
+     ATU |   -.306137    .0940958    -3.25   0.001     -.490561    -.121713
+     ATE |    .483652    .0775267     6.24   0.000      .331702     .635601
+   kappa |    .977947     .104244     9.38   0.000      .773632     1.18226
+----------------------------------------------------------------------------
+kappa = rho1*sigma1 - rho0*sigma0;  ATT - ATU = kappa*(mean lambda1 + mean lambda0)
+Variance of ATT: parameters    .0136 + sampling  .000231 + covariance  .000156 (by observation)
+Common support of P(Z): [0.0215, 0.9075]
+
+. esrtest, spec
+
+Specification of the selection equation
+(a) Link test: probit of d on v = Z g and its powers 2..2 (H0: the powers are zero)
+------------------------------------------------------------------
+  term                 |      Coef.   Std. err.        z    P>|z|
+----------------------+-------------------------------------------
+                   v  |     1.2149     .039702    30.60    0.000
+                 v^2  |     .84348     .048067    17.55    0.000
+------------------------------------------------------------------
+  Wald chi2(1) =   307.93   Prob > chi2 = 0.0000
+
+(b) gamma: probit against FIML (H0: trivariate normality, A3; the gamma block of esrtest, normal)
+----------------------------------------------------------------------
+                          |     probit        FIML   difference   Std. err.
+--------------------------+-------------------------------------------
+                       x  |     0.2497      0.2486      0.0010      0.0021
+                       z  |     0.6053      0.5947      0.0106      0.0027
+                   _cons  |     0.0555      0.0515      0.0041      0.0010
+----------------------------------------------------------------------
+  Wald chi2(3) =    31.20   Prob > chi2 = 0.0000
+Reading: (a) rejects when the index is not linear in Z (missing polynomials or
+interactions) or the link is not the normal cdf; both routes then use the wrong
+Mills ratios.  (b) rejects when the outcomes, read through trivariate normality,
+pull gamma away from the probit: A3 fails, or the index of (a) is misspecified.
+
+. di as txt _n "expected (Python): link v^2 .84348 (.04807), Wald chi2(1) = 307.93;"
+
+expected (Python): link v^2 .84348 (.04807), Wald chi2(1) = 307.93;
+
+. di as txt   "                   gamma probit .24969 .6053 .05555 vs FIML .24864 .59472 .05145, se diff .0021 .00273 .0
+> 0104, chi2(3) = 31.20 (p .000)"
+                   gamma probit .24969 .6053 .05555 vs FIML .24864 .59472 .05145, se diff .0021 .00273 .00104, chi2(3) =
+>  31.20 (p .000)
+
+. return list
+
+scalars:
+                r(p_g) =  7.70964785654e-07
+               r(df_g) =  3
+             r(chi2_g) =  31.20139501442548
+               r(p_lr) =  .
+                 r(lr) =  .
+                  r(p) =  6.17135089752e-69
+                 r(df) =  1
+               r(chi2) =  307.9290122332404
+
+macros:
+               r(test) : "spec"
+             r(tested) : " v^2"
+
+matrices:
+               r(link) :  1 x 4
+              r(gamma) :  3 x 3
+
+. esrtest, spec order(3)
+
+Specification of the selection equation
+(a) Link test: probit of d on v = Z g and its powers 2..3 (H0: the powers are zero)
+------------------------------------------------------------------
+  term                 |      Coef.   Std. err.        z    P>|z|
+----------------------+-------------------------------------------
+                   v  |     1.2137     .055869    21.72    0.000
+                 v^2  |     .84487     .065084    12.98    0.000
+                 v^3  |   .0018152     .057494     0.03    0.975
+------------------------------------------------------------------
+  Wald chi2(2) =   307.79   Prob > chi2 = 0.0000
+
+(b) gamma: probit against FIML (H0: trivariate normality, A3; the gamma block of esrtest, normal)
+----------------------------------------------------------------------
+                          |     probit        FIML   difference   Std. err.
+--------------------------+-------------------------------------------
+                       x  |     0.2497      0.2486      0.0010      0.0021
+                       z  |     0.6053      0.5947      0.0106      0.0027
+                   _cons  |     0.0555      0.0515      0.0041      0.0010
+----------------------------------------------------------------------
+  Wald chi2(3) =    31.20   Prob > chi2 = 0.0000
+Reading: (a) rejects when the index is not linear in Z (missing polynomials or
+interactions) or the link is not the normal cdf; both routes then use the wrong
+Mills ratios.  (b) rejects when the outcomes, read through trivariate normality,
+pull gamma away from the probit: A3 fails, or the index of (a) is misspecified.
+
+. di as txt _n "expected (Python): v^2 .84487 (.06508) v^3 .00182 (.05749), Wald chi2(2) = 307.79"
+
+expected (Python): v^2 .84487 (.06508) v^3 .00182 (.05749), Wald chi2(2) = 307.79
+
+. esrtest, spec add(z2)
+
+Specification of the selection equation
+(a) Added terms in the probit of d (H0: their coefficients are zero)
+------------------------------------------------------------------
+  term                 |      Coef.   Std. err.        z    P>|z|
+----------------------+-------------------------------------------
+                  z2  |     .49394     .022877    21.59    0.000
+------------------------------------------------------------------
+  Wald chi2(1) =   466.18   Prob > chi2 = 0.0000
+  LR   chi2(1) =   593.70   Prob > chi2 = 0.0000
+
+(b) gamma: probit against FIML (H0: trivariate normality, A3; the gamma block of esrtest, normal)
+----------------------------------------------------------------------
+                          |     probit        FIML   difference   Std. err.
+--------------------------+-------------------------------------------
+                       x  |     0.2497      0.2486      0.0010      0.0021
+                       z  |     0.6053      0.5947      0.0106      0.0027
+                   _cons  |     0.0555      0.0515      0.0041      0.0010
+----------------------------------------------------------------------
+  Wald chi2(3) =    31.20   Prob > chi2 = 0.0000
+Reading: (a) rejects when the index is not linear in Z (missing polynomials or
+interactions) or the link is not the normal cdf; both routes then use the wrong
+Mills ratios.  (b) rejects when the outcomes, read through trivariate normality,
+pull gamma away from the probit: A3 fails, or the index of (a) is misspecified.
+
+. di as txt _n "expected (Python): z2 .49394 (.02288), Wald chi2(1) = 466.18, LR chi2(1) = 593.70"
+
+expected (Python): z2 .49394 (.02288), Wald chi2(1) = 466.18, LR chi2(1) = 593.70
+
+. esrtest, spec add(c.z#c.z)
+
+Specification of the selection equation
+(a) Added terms in the probit of d (H0: their coefficients are zero)
+------------------------------------------------------------------
+  term                 |      Coef.   Std. err.        z    P>|z|
+----------------------+-------------------------------------------
+             c.z#c.z  |     .49394     .022877    21.59    0.000
+------------------------------------------------------------------
+  Wald chi2(1) =   466.18   Prob > chi2 = 0.0000
+  LR   chi2(1) =   593.70   Prob > chi2 = 0.0000
+
+(b) gamma: probit against FIML (H0: trivariate normality, A3; the gamma block of esrtest, normal)
+----------------------------------------------------------------------
+                          |     probit        FIML   difference   Std. err.
+--------------------------+-------------------------------------------
+                       x  |     0.2497      0.2486      0.0010      0.0021
+                       z  |     0.6053      0.5947      0.0106      0.0027
+                   _cons  |     0.0555      0.0515      0.0041      0.0010
+----------------------------------------------------------------------
+  Wald chi2(3) =    31.20   Prob > chi2 = 0.0000
+Reading: (a) rejects when the index is not linear in Z (missing polynomials or
+interactions) or the link is not the normal cdf; both routes then use the wrong
+Mills ratios.  (b) rejects when the outcomes, read through trivariate normality,
+pull gamma away from the probit: A3 fails, or the index of (a) is misspecified.
+
+. di as txt _n "expected: same as add(z2)"
+
+expected: same as add(z2)
+
+. * ---- the right index: the quadratic in the selection equation
+. esreg y x, select(d = x z z2) nolog
+
+
+Endogenous switching regression -- full information ML
+
+                                                       Number of obs =   5,000
+                                                       Wald chi2(1)  = 2143.73
+Log likelihood = -10054.646                            Prob > chi2   =  0.0000
+
+------------------------------------------------------------------------------
+           y | Coefficient  Std. err.      z    P>|z|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+y_1          |
+           x |   1.164498   .0251509    46.30   0.000     1.115203    1.213792
+       _cons |   .9869929   .0397231    24.85   0.000      .909137    1.064849
+-------------+----------------------------------------------------------------
+y_0          |
+           x |   .4014136   .0219229    18.31   0.000     .3584455    .4443816
+       _cons |   .4906403   .0474441    10.34   0.000     .3976515    .5836291
+-------------+----------------------------------------------------------------
+d            |
+           x |   .2891043   .0203166    14.23   0.000     .2492845    .3289242
+           z |   .9049599    .029232    30.96   0.000     .8476661    .9622536
+          z2 |   .5029329   .0219627    22.90   0.000     .4598869     .545979
+       _cons |  -.3010459   .0241967   -12.44   0.000    -.3484706   -.2536213
+-------------+----------------------------------------------------------------
+lnsigma_1    |
+       _cons |   .2849391   .0165889    17.18   0.000     .2524255    .3174527
+-------------+----------------------------------------------------------------
+lnsigma_0    |
+       _cons |  -.0211797    .018373    -1.15   0.249    -.0571901    .0148306
+-------------+----------------------------------------------------------------
+atanhrho_1   |
+       _cons |    .726261    .049254    14.75   0.000      .629725    .8227971
+-------------+----------------------------------------------------------------
+atanhrho_0   |
+       _cons |  -.3522659   .0735348    -4.79   0.000    -.4963915   -.2081404
+------------------------------------------------------------------------------
+LR test of independent equations (rho1 = rho0 = 0): chi2(2) =   251.69   Prob > chi2 = 0.0000
+sigma_1 =  1.32968   sigma_0 =  .979043   rho_1 =  .620773   rho_0 = -.338384
+
+Treatment effects (std. err.: influence function of the whole procedure)
+----------------------------------------------------------------------------
+Index    |   Estimate   Std. err.        z    P>|z|     [95% conf. interval]
+---------+------------------------------------------------------------------
+     ATT |    1.27638    .0916876    13.92   0.000      1.09668     1.45609
+     ATU |   -.338808    .0731004    -4.63   0.000     -.482082    -.195534
+     ATE |    .489462    .0618188     7.92   0.000        .3683     .610625
+   kappa |    1.15672    .0850966    13.59   0.000      .989935     1.32351
+----------------------------------------------------------------------------
+kappa = rho1*sigma1 - rho0*sigma0;  ATT - ATU = kappa*(mean lambda1 + mean lambda0)
+Variance of ATT: parameters   .00799 + sampling  .000286 + covariance  .000132 (by observation)
+Common support of P(Z): [0.0751, 0.9961]
+
+. esrtest, spec
+
+Specification of the selection equation
+(a) Link test: probit of d on v = Z g and its powers 2..2 (H0: the powers are zero)
+------------------------------------------------------------------
+  term                 |      Coef.   Std. err.        z    P>|z|
+----------------------+-------------------------------------------
+                   v  |     1.0146     .034696    29.24    0.000
+                 v^2  |   -.030279      .03103    -0.98    0.329
+------------------------------------------------------------------
+  Wald chi2(1) =     0.95   Prob > chi2 = 0.3292
+
+(b) gamma: probit against FIML (H0: trivariate normality, A3; the gamma block of esrtest, normal)
+----------------------------------------------------------------------
+                          |     probit        FIML   difference   Std. err.
+--------------------------+-------------------------------------------
+                       x  |     0.2885      0.2891     -0.0006      0.0038
+                       z  |     0.9025      0.9050     -0.0025      0.0067
+                      z2  |     0.4939      0.5029     -0.0090      0.0072
+                   _cons  |    -0.2969     -0.3010      0.0042      0.0058
+----------------------------------------------------------------------
+  Wald chi2(4) =     2.64   Prob > chi2 = 0.6203
+Reading: (a) rejects when the index is not linear in Z (missing polynomials or
+interactions) or the link is not the normal cdf; both routes then use the wrong
+Mills ratios.  (b) rejects when the outcomes, read through trivariate normality,
+pull gamma away from the probit: A3 fails, or the index of (a) is misspecified.
+
+. di as txt _n "expected (Python): link v^2 -.03028 (.03103), Wald chi2(1) = 0.95 (p .329);"
+
+expected (Python): link v^2 -.03028 (.03103), Wald chi2(1) = 0.95 (p .329);
+
+. di as txt   "                   gamma probit .28854 .90247 .49394 -.29689 vs FIML .2891 .90496 .50293 -.30105, chi2(4)
+>  = 2.64 (p .620)"
+                   gamma probit .28854 .90247 .49394 -.29689 vs FIML .2891 .90496 .50293 -.30105, chi2(4) = 2.64 (p .620
+> )
+
+. di as txt   "                   kappa: select(x z) .9779 (fiml) .9322 (twostep); select(x z z2) 1.1567 / 1.1301  (true
+>  1.08)"
+                   kappa: select(x z) .9779 (fiml) .9322 (twostep); select(x z z2) 1.1567 / 1.1301  (true 1.08)
+
+. esreg y x, select(d = x z z2) method(twostep) nolog
+
+Endogenous switching regression -- two-step     Number of obs =      5000
+Outcome: y   Treatment: d                       Treated       =      2564
+Std. err.: exact variance of the two-step procedure (stacked moments)
+------------------------------------------------------------------------------
+           y | Coefficient  Std. err.      z    P>|z|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+d            |
+           x |   .2885388   .0205091    14.07   0.000     .2483418    .3287358
+           z |   .9024681   .0299076    30.18   0.000     .8438502    .9610859
+          z2 |   .4939447   .0230391    21.44   0.000     .4487889    .5391006
+       _cons |  -.2968949   .0248088   -11.97   0.000    -.3455193   -.2482706
+-------------+----------------------------------------------------------------
+y_1          |
+           x |   1.164269    .025059    46.46   0.000     1.115155    1.213384
+      lambda |   .8151447   .0565701    14.41   0.000     .7042693    .9260201
+       _cons |    .993615   .0430307    23.09   0.000     .9092763    1.077954
+-------------+----------------------------------------------------------------
+y_0          |
+           x |   .4038493   .0211277    19.11   0.000     .3624398    .4452588
+      lambda |   -.314996   .0654605    -4.81   0.000    -.4432961   -.1866958
+       _cons |   .5012488   .0468161    10.71   0.000     .4094909    .5930068
+------------------------------------------------------------------------------
+sigma_1 =  1.32717   sigma_0 =  .976653   rho_1 =  .614195   rho_0 = -.322526
+
+Treatment effects (std. err.: influence function of the whole procedure)
+----------------------------------------------------------------------------
+Index    |   Estimate   Std. err.        z    P>|z|     [95% conf. interval]
+---------+------------------------------------------------------------------
+     ATT |    1.25817    .0897841    14.01   0.000       1.0822     1.43415
+     ATU |   -.325197    .0809028    -4.02   0.000     -.483763     -.16663
+     ATE |    .486756    .0637825     7.63   0.000      .361745     .611767
+   kappa |    1.13014    .0873936    12.93   0.000      .958852     1.30143
+----------------------------------------------------------------------------
+kappa = rho1*sigma1 - rho0*sigma0;  ATT - ATU = kappa*(mean lambda1 + mean lambda0)
+Variance of ATT: parameters   .00764 + sampling   .00028 + covariance  .000138 (by observation)
+Common support of P(Z): [0.0754, 0.9959]
+
+. esrtest, spec
+
+Specification of the selection equation
+(a) Link test: probit of d on v = Z g and its powers 2..2 (H0: the powers are zero)
+------------------------------------------------------------------
+  term                 |      Coef.   Std. err.        z    P>|z|
+----------------------+-------------------------------------------
+                   v  |     1.0146     .034696    29.24    0.000
+                 v^2  |   -.030279      .03103    -0.98    0.329
+------------------------------------------------------------------
+  Wald chi2(1) =     0.95   Prob > chi2 = 0.3292
+
+(b) gamma: probit against FIML (H0: trivariate normality, A3; the gamma block of esrtest, normal)
+----------------------------------------------------------------------
+                          |     probit        FIML   difference   Std. err.
+--------------------------+-------------------------------------------
+                       x  |     0.2885      0.2891     -0.0006      0.0038
+                       z  |     0.9025      0.9050     -0.0025      0.0067
+                      z2  |     0.4939      0.5029     -0.0090      0.0072
+                   _cons  |    -0.2969     -0.3010      0.0042      0.0058
+----------------------------------------------------------------------
+  Wald chi2(4) =     2.64   Prob > chi2 = 0.6203
+Reading: (a) rejects when the index is not linear in Z (missing polynomials or
+interactions) or the link is not the normal cdf; both routes then use the wrong
+Mills ratios.  (b) rejects when the outcomes, read through trivariate normality,
+pull gamma away from the probit: A3 fails, or the index of (a) is misspecified.
+
+. di as txt "e(cmd) after esrtest: `e(cmd)'  e(method) = `e(method)'  (expected esreg, twostep: the user's estimation is
+>  kept)"
+e(cmd) after esrtest: esreg  e(method) = twostep  (expected esreg, twostep: the user's estimation is kept)
+
+. * ---- esr_sim: index correctly specified, joint normal
+. use "data/esr_sim.dta", clear
+(ESR simule -- parametres connus (voir .do compagnon))
+
+. esreg y x, select(d = x z) nolog
+
+
+Endogenous switching regression -- full information ML
+
+                                                       Number of obs =  20,000
+                                                       Wald chi2(1)  = 9842.16
+Log likelihood = -39940.291                            Prob > chi2   =  0.0000
+
+------------------------------------------------------------------------------
+           y | Coefficient  Std. err.      z    P>|z|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+y_1          |
+           x |   1.205903   .0121553    99.21   0.000     1.182079    1.229727
+       _cons |   .9831364   .0189707    51.82   0.000     .9459545    1.020318
+-------------+----------------------------------------------------------------
+y_0          |
+           x |   .3865108   .0109584    35.27   0.000     .3650327    .4079889
+       _cons |   .4803904   .0196117    24.50   0.000     .4419522    .5188286
+-------------+----------------------------------------------------------------
+d            |
+           x |    .292636   .0103871    28.17   0.000     .2722778    .3129943
+           z |   .9081516   .0128427    70.71   0.000     .8829804    .9333227
+       _cons |   .2042513   .0102002    20.02   0.000     .1842592    .2242433
+-------------+----------------------------------------------------------------
+lnsigma_1    |
+       _cons |   .2549285   .0083776    30.43   0.000     .2385086    .2713483
+-------------+----------------------------------------------------------------
+lnsigma_0    |
+       _cons |  -.0094671   .0082558    -1.15   0.251    -.0256482    .0067139
+-------------+----------------------------------------------------------------
+atanhrho_1   |
+       _cons |   .6991283   .0276441    25.29   0.000     .6449469    .7533097
+-------------+----------------------------------------------------------------
+atanhrho_0   |
+       _cons |  -.3238298   .0263308   -12.30   0.000    -.3754372   -.2722223
+------------------------------------------------------------------------------
+LR test of independent equations (rho1 = rho0 = 0): chi2(2) =   787.01   Prob > chi2 = 0.0000
+sigma_1 =  1.29037   sigma_0 =  .990578   rho_1 =  .603814   rho_0 = -.312966
+
+Treatment effects (std. err.: influence function of the whole procedure)
+----------------------------------------------------------------------------
+Index    |   Estimate   Std. err.        z    P>|z|     [95% conf. interval]
+---------+------------------------------------------------------------------
+     ATT |    1.17919    .0345787    34.10   0.000      1.11142     1.24696
+     ATU |   -.343526    .0389294    -8.82   0.000     -.419826    -.267225
+     ATE |    .508129    .0275039    18.47   0.000      .454222     .562035
+   kappa |    1.08916    .0373076    29.19   0.000      1.01604     1.16228
+----------------------------------------------------------------------------
+kappa = rho1*sigma1 - rho0*sigma0;  ATT - ATU = kappa*(mean lambda1 + mean lambda0)
+Variance of ATT: parameters   .00111 + sampling  .000058 + covariance  .000024 (by observation)
+Common support of P(Z): [0.0213, 0.9910]
+
+. esrtest, spec
+
+Specification of the selection equation
+(a) Link test: probit of d on v = Z g and its powers 2..2 (H0: the powers are zero)
+------------------------------------------------------------------
+  term                 |      Coef.   Std. err.        z    P>|z|
+----------------------+-------------------------------------------
+                   v  |     1.0007     .014207    70.44    0.000
+                 v^2  |  -.0029672     .013339    -0.22    0.824
+------------------------------------------------------------------
+  Wald chi2(1) =     0.05   Prob > chi2 = 0.8240
+
+(b) gamma: probit against FIML (H0: trivariate normality, A3; the gamma block of esrtest, normal)
+----------------------------------------------------------------------
+                          |     probit        FIML   difference   Std. err.
+--------------------------+-------------------------------------------
+                       x  |     0.2923      0.2926     -0.0003      0.0018
+                       z  |     0.9133      0.9082      0.0051      0.0022
+                   _cons  |     0.2033      0.2043     -0.0010      0.0010
+----------------------------------------------------------------------
+  Wald chi2(3) =     6.66   Prob > chi2 = 0.0836
+Reading: (a) rejects when the index is not linear in Z (missing polynomials or
+interactions) or the link is not the normal cdf; both routes then use the wrong
+Mills ratios.  (b) rejects when the outcomes, read through trivariate normality,
+pull gamma away from the probit: A3 fails, or the index of (a) is misspecified.
+
+. di as txt _n "expected (Python): link v^2 -.00297 (.01334), chi2(1) = 0.05 (p .824); gamma chi2(3) = 6.66 (p .084)"
+
+expected (Python): link v^2 -.00297 (.01334), chi2(1) = 0.05 (p .824); gamma chi2(3) = 6.66 (p .084)
+
+. esrtest, spec order(3)
+
+Specification of the selection equation
+(a) Link test: probit of d on v = Z g and its powers 2..3 (H0: the powers are zero)
+------------------------------------------------------------------
+  term                 |      Coef.   Std. err.        z    P>|z|
+----------------------+-------------------------------------------
+                   v  |     1.0011     .021945    45.62    0.000
+                 v^2  |  -.0028669     .013855    -0.21    0.836
+                 v^3  | -.00028144     .010598    -0.03    0.979
+------------------------------------------------------------------
+  Wald chi2(2) =     0.05   Prob > chi2 = 0.9752
+
+(b) gamma: probit against FIML (H0: trivariate normality, A3; the gamma block of esrtest, normal)
+----------------------------------------------------------------------
+                          |     probit        FIML   difference   Std. err.
+--------------------------+-------------------------------------------
+                       x  |     0.2923      0.2926     -0.0003      0.0018
+                       z  |     0.9133      0.9082      0.0051      0.0022
+                   _cons  |     0.2033      0.2043     -0.0010      0.0010
+----------------------------------------------------------------------
+  Wald chi2(3) =     6.66   Prob > chi2 = 0.0836
+Reading: (a) rejects when the index is not linear in Z (missing polynomials or
+interactions) or the link is not the normal cdf; both routes then use the wrong
+Mills ratios.  (b) rejects when the outcomes, read through trivariate normality,
+pull gamma away from the probit: A3 fails, or the index of (a) is misspecified.
+
+. di as txt _n "expected (Python): v^2 -.00287 (.01385) v^3 -.00028 (.0106), chi2(2) = 0.05 (p .975)"
+
+expected (Python): v^2 -.00287 (.01385) v^3 -.00028 (.0106), chi2(2) = 0.05 (p .975)
+
+. * ---- factor terms in the selection equation (esr_annex2): spec, suff and normal
+. * (the internal re-estimations now run on the plain variables behind 2.region 3.region)
+. use "data/esr_annex2.dta", clear
+(Exemple ESR compatible -- effet vrai = 2 (ATT=ATU=ATE))
+
+. esreg income educ, select(treatment = educ i.region inst) nolog
+
+
+Endogenous switching regression -- full information ML
+
+                                                       Number of obs =   5,000
+                                                       Wald chi2(1)  = 9364.86
+Log likelihood = -4229.3298                            Prob > chi2   =  0.0000
+
+------------------------------------------------------------------------------
+      income | Coefficient  Std. err.      z    P>|z|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+income_1     |
+        educ |   .5039501   .0052076    96.77   0.000     .4937434    .5141568
+       _cons |    62.8872    .018741  3355.60   0.000     62.85047    62.92393
+-------------+----------------------------------------------------------------
+income_0     |
+        educ |    .503302   .0073309    68.65   0.000     .4889337    .5176704
+       _cons |    60.9076    .029714  2049.79   0.000     60.84937    60.96584
+-------------+----------------------------------------------------------------
+treatment    |
+        educ |  -.0034487    .017057    -0.20   0.840    -.0368798    .0299824
+             |
+      region |
+          2  |   .2872394   .0470878     6.10   0.000      .194949    .3795297
+          3  |   .3312872   .0441748     7.50   0.000     .2447062    .4178683
+             |
+        inst |   .7008037   .0231935    30.22   0.000     .6553452    .7462622
+       _cons |   .3195646   .0613857     5.21   0.000     .1992509    .4398784
+-------------+----------------------------------------------------------------
+lnsigma_1    |
+       _cons |  -1.031078   .0164339   -62.74   0.000    -1.063288   -.9988683
+-------------+----------------------------------------------------------------
+lnsigma_0    |
+       _cons |  -1.004442   .0234157   -42.90   0.000    -1.050336   -.9585478
+-------------+----------------------------------------------------------------
+atanhrho_1   |
+       _cons |   .5907883   .0621601     9.50   0.000     .4689568    .7126198
+-------------+----------------------------------------------------------------
+atanhrho_0   |
+       _cons |   .5748916   .0631184     9.11   0.000     .4511818    .6986013
+------------------------------------------------------------------------------
+LR test of independent equations (rho1 = rho0 = 0): chi2(2) =   172.38   Prob > chi2 = 0.0000
+sigma_1 =  .356622   sigma_0 =  .366249   rho_1 =  .530462   rho_0 =  .518943
+
+Treatment effects (std. err.: influence function of the whole procedure)
+----------------------------------------------------------------------------
+Index    |   Estimate   Std. err.        z    P>|z|     [95% conf. interval]
+---------+------------------------------------------------------------------
+     ATT |    1.98115    .0291972    67.85   0.000      1.92393     2.03838
+     ATU |    1.98233    .0267541    74.09   0.000      1.92989     2.03477
+     ATE |    1.98155    .0230847    85.84   0.000       1.9363     2.02679
+   kappa |-.000887549      .02634    -0.03   0.973    -.0525129    .0507378
+----------------------------------------------------------------------------
+kappa = rho1*sigma1 - rho0*sigma0;  ATT - ATU = kappa*(mean lambda1 + mean lambda0)
+Variance of ATT: parameters  .000852 + sampling  1.9e-10 + covariance  4.0e-08 (by observation)
+Common support of P(Z): [0.0421, 0.9754]
+
+. esrtest, spec
+
+Specification of the selection equation
+(a) Link test: probit of treatment on v = Z g and its powers 2..2 (H0: the powers are zero)
+------------------------------------------------------------------
+  term                 |      Coef.   Std. err.        z    P>|z|
+----------------------+-------------------------------------------
+                   v  |      1.015     .044734    22.69    0.000
+                 v^2  |   -.019277     .038429    -0.50    0.616
+------------------------------------------------------------------
+  Wald chi2(1) =     0.25   Prob > chi2 = 0.6159
+
+(b) gamma: probit against FIML (H0: trivariate normality, A3; the gamma block of esrtest, normal)
+----------------------------------------------------------------------
+                          |     probit        FIML   difference   Std. err.
+--------------------------+-------------------------------------------
+                    educ  |    -0.0057     -0.0034     -0.0022      0.0026
+                2.region  |     0.3258      0.2872      0.0386      0.0209
+                3.region  |     0.3610      0.3313      0.0297      0.0191
+                    inst  |     0.6972      0.7008     -0.0036      0.0040
+                   _cons  |     0.3007      0.3196     -0.0189      0.0148
+----------------------------------------------------------------------
+  Wald chi2(5) =     7.17   Prob > chi2 = 0.2081
+Reading: (a) rejects when the index is not linear in Z (missing polynomials or
+interactions) or the link is not the normal cdf; both routes then use the wrong
+Mills ratios.  (b) rejects when the outcomes, read through trivariate normality,
+pull gamma away from the probit: A3 fails, or the index of (a) is misspecified.
+
+. di as txt _n "expected (Python): link v^2 -.01928 (.03843), chi2(1) = 0.25 (p .616);"
+
+expected (Python): link v^2 -.01928 (.03843), chi2(1) = 0.25 (p .616);
+
+. di as txt   "                   gamma probit -.0057 .3258 .361 .6972 .3007 vs FIML -.0034 .2872 .3313 .7008 .3196,"
+                   gamma probit -.0057 .3258 .361 .6972 .3007 vs FIML -.0034 .2872 .3313 .7008 .3196,
+
+. di as txt   "                   se diff .0026 .0209 .0191 .004 .0148, chi2(5) = 7.17 (p .208)"
+                   se diff .0026 .0209 .0191 .004 .0148, chi2(5) = 7.17 (p .208)
+
+. return list
+
+scalars:
+                r(p_g) =  .2080556199585332
+               r(df_g) =  5
+             r(chi2_g) =  7.173468329920883
+               r(p_lr) =  .
+                 r(lr) =  .
+                  r(p) =  .6159232478097568
+                 r(df) =  1
+               r(chi2) =  .2516391662278472
+
+macros:
+               r(test) : "spec"
+             r(tested) : " v^2"
+
+matrices:
+               r(link) :  1 x 4
+              r(gamma) :  5 x 3
+
+. esrtest, suff
+
+Test of index sufficiency:  H0: E[omega_j | X, Z, u] = E[omega_j | X, u]
+(two-step re-estimation with 2.region 3.region added to both regime equations; kept excluded: inst)
+--------------------------------------------------------------------
+  added instrument      |      Coef.   Std. err.        z    P>|z|
+------------------------+-------------------------------------------
+  regime 1 (income_1)
+              2.region  |    .015773     .016016     0.98    0.325
+              3.region  |    .011924     .014891     0.80    0.423
+  regime 0 (income_0)
+              2.region  |    .052452     .021499     2.44    0.015
+              3.region  |    .033516     .020501     1.63    0.102
+--------------------------------------------------------------------
+  joint      Wald chi2(4) =     6.94   Prob > chi2 = 0.1391
+  regime 1   Wald chi2(2) =     1.06   Prob > chi2 = 0.5900
+  regime 0   Wald chi2(2) =     6.25   Prob > chi2 = 0.0439
+A rejection says that the added instrument(s) carry information on the regime errors beyond the
+selection index: a direct effect on the outcome (exclusion) or a second index in participation.
+
+. di as txt _n "expected (Python, keep inst, tested 2.region 3.region): coefs .01577 (.01602) .01192 (.01489) regime 1,"
+
+expected (Python, keep inst, tested 2.region 3.region): coefs .01577 (.01602) .01192 (.01489) regime 1,
+
+. di as txt   "                   .05245 (.0215) .03352 (.0205) regime 0; joint chi2(4) = 6.94, regime 1 1.06, regime 0 
+> 6.25"
+                   .05245 (.0215) .03352 (.0205) regime 0; joint chi2(4) = 6.94, regime 1 1.06, regime 0 6.25
+
+. esrtest, normal
+
+Normality by regime
+(a) Hausman contrast, FIML vs two-step (H0: trivariate normality, A3)
+----------------------------------------------------------------------
+                          |   two-step        FIML   difference   Std. err.
+--------------------------+-------------------------------------------
+          treatment:educ  |    -0.0057     -0.0034     -0.0022      0.0026
+      treatment:2.region  |     0.3258      0.2872      0.0386      0.0209
+      treatment:3.region  |     0.3610      0.3313      0.0297      0.0191
+          treatment:inst  |     0.6972      0.7008     -0.0036      0.0040
+         treatment:_cons  |     0.3007      0.3196     -0.0189      0.0148
+           income_1:educ  |     0.5042      0.5040      0.0003      0.0002
+          income_1:_cons  |    62.8894     62.8872      0.0022      0.0054
+     income_1:rho1sigma1  |     0.1826      0.1892     -0.0066      0.0117
+           income_0:educ  |     0.5027      0.5033     -0.0006      0.0004
+          income_0:_cons  |    60.9074     60.9076     -0.0002      0.0064
+     income_0:rho0sigma0  |     0.1881      0.1901     -0.0020      0.0069
+----------------------------------------------------------------------
+  Hausman chi2(11) =    11.36   Prob > chi2 = 0.4133
+  kappa: two-step -.005512   FIML -.000888   difference -.004625 (s.e.  .01303, z =  -0.35)
+  Std. err. of the differences from the influence functions of the two estimators.
+
+(b) Hermite controls beside the Mills ratio (H0: E[omega_j | u] linear in u, A2)
+--------------------------------------------------------------------
+  control                |      Coef.   Std. err.        z    P>|z|
+------------------------+-------------------------------------------
+  regime 1 (income_1)
+        E[u^2-1 | D,Z]  |     .10217     .050522     2.02    0.043
+       E[u^3-3u | D,Z]  |   -.013977     .056565    -0.25    0.805
+  regime 0 (income_0)
+        E[u^2-1 | D,Z]  |     .13125      .10353     1.27    0.205
+       E[u^3-3u | D,Z]  |    .044681     .041954     1.07    0.287
+--------------------------------------------------------------------
+  joint      Wald chi2(4) =     8.02   Prob > chi2 = 0.0910
+  regime 1   Wald chi2(2) =     6.21   Prob > chi2 = 0.0448
+  regime 0   Wald chi2(2) =     1.81   Prob > chi2 = 0.4037
+  cubic terms (u^3-3u, both regimes) Wald chi2(2) =     1.19   Prob > chi2 = 0.5502
+Reading: (a) rejects when the regime laws are not normal (the likelihood is then
+inconsistent, the two-step is not); (b) rejects when E[omega_j | u] bends (both routes
+lose the curve; the augmented two-step, esreg ..., method(twostep) hermite(#), fits it,
+of order 3 if the cubic terms reject, else 2; the semiparametric MTE of esrmte checks it).
+
+. di as txt _n "expected (Python): Hausman chi2(11) = 11.36 (p .413); kappa -.0055 vs -.0009, diff -.0046 (s.e. .0130);"
+
+expected (Python): Hausman chi2(11) = 11.36 (p .413); kappa -.0055 vs -.0009, diff -.0046 (s.e. .0130);
+
+. di as txt   "                   Hermite coefs .1022 -.014 (regime 1) .1312 .0447 (regime 0); joint chi2(4) = 8.02, reg
+> ime 1 6.21, regime 0 1.81"
+                   Hermite coefs .1022 -.014 (regime 1) .1312 .0447 (regime 0); joint chi2(4) = 8.02, regime 1 6.21, reg
+> ime 0 1.81
+
+. di as txt "e(cmd) after esrtest: `e(cmd)'  e(method) = `e(method)'  (expected esreg, fiml)"
+e(cmd) after esrtest: esreg  e(method) = fiml  (expected esreg, fiml)
+
+. estimates dir
+
+-----------------------------------------------------------------------------------------------------
+             |           Dependent  Number of        
+        Name | Command    variable     param.  Title 
+-------------+---------------------------------------------------------------------------------------
+      _esreg | esreg        income         13  Endogenous switching regression -- full information ML
+-----------------------------------------------------------------------------------------------------
+
+. 
+end of do-file

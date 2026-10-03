@@ -1,0 +1,55 @@
+esreg 1.0.0 -- stored results
+================================
+
+The estimation is stored automatically as  estimates store _esreg  (the last
+esreg of the session) and, with store(name), also under that name.  Post-
+commands (predict, esrcurve, esrmte, esrdiag, esrtest) look for est(name),
+then the current e() if e(cmd) == "esreg", then _esreg.
+
+Scalars
+  e(N)            observations            e(N_treated)   treated       e(N_untreated)
+  e(sum_w)        sum of weights (= N without weights)
+  e(k_x) e(k_z)   columns of X and Z (constant included)
+  e(k_hs) e(k_hr) e(k_kap)   columns of Ws, Wr (fiml) and Wk (twostep), constant included
+  e(hermite)      order of the augmented two-step, 2 or 3 (0: the linear model);
+                  the larger of e(hermite1) (treated) and e(hermite0) (untreated)
+  e(k_h1) e(k_h0) Hermite controls of the treated and of the untreated regime:
+                  the order - 1 (0 without Hermite terms); e(k_h) the larger
+  e(ll)           log likelihood (fiml)    e(ll_indep) e(lr_indep) e(lr_df) e(p_indep)
+  e(converged)    1 if converged
+  e(att) e(atu) e(ate) e(kappa)     e(se_att) e(se_atu) e(se_ate) e(se_kappa)
+  e(sigma1) e(sigma0) e(rho1) e(rho0)     (sample means when heterogeneous)
+  e(rhosig1) e(rhosig0)                   rho_j * sigma_j
+  e(supp_lo) e(supp_hi)                   common support of P(Z)
+  e(p_min1) e(p_max1) e(p_min0) e(p_max0) range of P(Z) among treated / untreated
+  e(ml1) e(ml0)   mean lambda1 among treated, mean lambda0 among untreated
+  e(N_clust)      number of clusters (vce(cluster))
+  e(N_strata) e(N_psu) e(df_r)   strata, PSUs, design df (twostep, vce(svy))
+
+Macros
+  e(cmd) "esreg"   e(cmdline)   e(version)   e(method) "fiml" | "twostep"
+  e(depvar) outcome   e(treat) treatment variable
+  e(xvars) e(zvars) e(hetsigma) e(hetrho) e(kappavars)   expanded variable lists
+  e(wtype) e(wexp)   weights        e(vce) e(vcetype) e(clustvar)
+               twostep e(vce): "stacked" (default), "cluster", "svy"
+  e(eff_vce)   aggregation of the standard errors of the effects: "iid",
+               "cluster", "svy" ("none" with noeffects)
+  e(eqnames)   fiml: y_1 y_0 d lnsigma_1 lnsigma_0 atanhrho_1 atanhrho_0
+               twostep: d y_1 y_0   (regime blocks: x..., lambda[_w]..., h2 h3
+               with hermite, _cons)
+  e(predict) "esreg_p"   e(title)   e(store) name given to store()
+
+Matrices
+  e(b) e(V)        full parameter vector and covariance
+  e(effects)       4 x 5: rows ATT ATU ATE kappa; columns est se var_param var_samp
+                   cov_ps (twice the covariance of the parameter and sampling
+                   parts); se^2 = var_param + var_samp + cov_ps
+  e(b_sel)         selection coefficients gamma (equation d)
+  e(b_1) e(b_0)    regime coefficients (fiml: x..., _cons; twostep: x..., lambda...,
+                   h2 h3 with hermite, _cons)
+  e(anc)           1 x 4: sigma1 sigma0 rho1 rho0
+  e(support)       1 x 4: p_min1 p_max1 p_min0 p_max0
+  e(lambda)        1 x 2: lambda1_treated lambda0_untreated
+
+Function
+  e(sample)
